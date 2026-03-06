@@ -46,6 +46,11 @@ type ModalState =
 	| { type: "closed" }
 	| { type: "add"; category: TransactionCategory }
 	| {
+			type: "edit";
+			category: TransactionCategory;
+			editTx: Transaction;
+	  }
+	| {
 			type: "list";
 			category: TransactionCategory;
 			transactions: Transaction[];
@@ -129,7 +134,20 @@ const DayRow = React.memo(function DayRow({
 			day: number;
 			recurrence: TransactionRecurrence;
 		}) => {
-			if (modal.type !== "add") return;
+			if (modal.type !== "add" && modal.type !== "edit") return;
+
+			// If editing, delete the old transaction first
+			if (modal.type === "edit") {
+				const isRecurring =
+					modal.editTx.recurrence &&
+					modal.editTx.recurrence !== "none" &&
+					Boolean(modal.editTx.seriesId);
+				onDeleteTransaction({
+					tx: modal.editTx,
+					scope: isRecurring ? "this-and-next" : "single",
+				});
+			}
+
 			onAddTransaction({
 				year,
 				month,
@@ -141,8 +159,12 @@ const DayRow = React.memo(function DayRow({
 			});
 			setModal({ type: "closed" });
 		},
-		[modal, year, month, onAddTransaction],
+		[modal, year, month, onAddTransaction, onDeleteTransaction],
 	);
+
+	const handleEditEntry = useCallback((tx: Transaction) => {
+		setModal({ type: "edit", category: tx.category, editTx: tx });
+	}, []);
 
 	const applyDelete = useCallback(
 		(tx: Transaction, scope: "single" | "this-and-next") => {
@@ -243,7 +265,7 @@ const DayRow = React.memo(function DayRow({
 
 			{modal.type !== "closed" && (
 				<Suspense fallback={null}>
-					{modal.type === "add" && (
+					{(modal.type === "add" || modal.type === "edit") && (
 						<AddEntryModal
 							open
 							category={modal.category}
@@ -252,6 +274,15 @@ const DayRow = React.memo(function DayRow({
 							year={year}
 							onClose={handleCloseModal}
 							onSave={handleSaveEntry}
+							editData={
+								modal.type === "edit"
+									? {
+											value: modal.editTx.value,
+											description: modal.editTx.description,
+											recurrence: modal.editTx.recurrence ?? "none",
+										}
+									: undefined
+							}
 						/>
 					)}
 
@@ -265,6 +296,7 @@ const DayRow = React.memo(function DayRow({
 							transactions={modal.transactions}
 							onClose={handleCloseModal}
 							onDelete={handleDeleteEntry}
+							onEdit={handleEditEntry}
 						/>
 					)}
 				</Suspense>

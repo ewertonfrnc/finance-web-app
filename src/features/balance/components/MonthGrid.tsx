@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Skeleton } from "#/components/ui/skeleton";
 import { calcularSaldosMes, getDiasNoMes } from "#/lib/finance";
+import { cn } from "#/lib/utils";
 import { useFinanceYear } from "../hooks/useFinanceYear";
 import { LazyMonth } from "./LazyMonth";
 import { MonthTable } from "./MonthTable";
@@ -64,6 +65,24 @@ export function MonthGrid({ year }: MonthGridProps) {
 		focusedYearRef.current = year;
 	}, [year, targetMonth, financeYear]);
 
+	const [canScrollLeft, setCanScrollLeft] = useState(false);
+	const [canScrollRight, setCanScrollRight] = useState(false);
+
+	const updateScrollIndicators = useCallback(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		setCanScrollLeft(el.scrollLeft > 20);
+		setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
+	}, []);
+
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		el.addEventListener("scroll", updateScrollIndicators, { passive: true });
+		updateScrollIndicators();
+		return () => el.removeEventListener("scroll", updateScrollIndicators);
+	}, [updateScrollIndicators]);
+
 	if (isLoading) {
 		return (
 			<div className="flex gap-4 overflow-x-auto pb-4">
@@ -89,36 +108,50 @@ export function MonthGrid({ year }: MonthGridProps) {
 	}
 
 	return (
-		<div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4">
-			{MONTHS.map((m) => {
-				const table = (
-					<MonthTable
-						month={m}
-						year={year}
-						financeYear={financeYear}
-						saldoInicialMes={saldosIniciaisMes[m] ?? 0}
-					/>
-				);
+		<div className="relative">
+			<div
+				className={cn(
+					"pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-linear-to-r from-background to-transparent transition-opacity duration-200",
+					canScrollLeft ? "opacity-100" : "opacity-0",
+				)}
+			/>
+			<div
+				className={cn(
+					"pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-linear-to-l from-background to-transparent transition-opacity duration-200",
+					canScrollRight ? "opacity-100" : "opacity-0",
+				)}
+			/>
+			<div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4">
+				{MONTHS.map((m) => {
+					const table = (
+						<MonthTable
+							month={m}
+							year={year}
+							financeYear={financeYear}
+							saldoInicialMes={saldosIniciaisMes[m] ?? 0}
+						/>
+					);
 
-				return (
-					<div
-						key={m}
-						ref={(el) => {
-							monthRefs.current[m] = el;
-						}}
-						tabIndex={-1}
-						className="rounded-lg"
-					>
-						{m === targetMonth ? (
-							table
-						) : (
-							<LazyMonth month={m} year={year}>
-								{table}
-							</LazyMonth>
-						)}
-					</div>
-				);
-			})}
+					return (
+						<div
+							key={m}
+							ref={(el) => {
+								monthRefs.current[m] = el;
+							}}
+							tabIndex={-1}
+							className="rounded-lg"
+						>
+							{m === targetMonth ? (
+								table
+							) : (
+								<LazyMonth month={m} year={year}>
+									{table}
+								</LazyMonth>
+							)}
+						</div>
+					);
+				})}
+			</div>
 		</div>
 	);
 }

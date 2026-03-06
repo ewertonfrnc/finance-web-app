@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import ThemeToggle from "#/components/ThemeToggle";
+import { Toaster } from "#/components/ui/sonner";
 
 import "../styles.css";
 
@@ -19,6 +20,7 @@ function RootComponent() {
 				<ThemeToggle />
 			</div>
 			<Outlet />
+			<Toaster position="bottom-right" richColors />
 			{/* <TanStackDevtools
 				config={{ position: "bottom-right" }}
 				plugins={[

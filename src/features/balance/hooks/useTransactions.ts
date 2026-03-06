@@ -1,10 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { writeDayData } from "../service/localStorageAdapter";
 import {
 	addTransaction,
-	removeTransactionsFromSeries,
 	readTransactions,
 	removeTransaction,
+	removeTransactionsFromSeries,
 	sumTransactions,
 } from "../service/transactionStorage";
 import type {
@@ -124,8 +125,7 @@ export function useTransactions(_year: number) {
 	const addMutation = useMutation({
 		mutationFn: async (params: AddParams) => {
 			const occurrences = buildOccurrences(params);
-			const seriesId =
-				params.recurrence === "none" ? undefined : generateId();
+			const seriesId = params.recurrence === "none" ? undefined : generateId();
 
 			occurrences.forEach((date) => {
 				addTransaction({
@@ -145,6 +145,7 @@ export function useTransactions(_year: number) {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["finances"] });
+			toast.success("Lançamento adicionado");
 		},
 	});
 
@@ -167,12 +168,7 @@ export function useTransactions(_year: number) {
 				});
 
 				affectedDates.forEach((date) => {
-					recalcDayField(
-						date.year,
-						date.month,
-						date.day,
-						params.tx.category,
-					);
+					recalcDayField(date.year, date.month, date.day, params.tx.category);
 				});
 				return;
 			}
@@ -193,6 +189,7 @@ export function useTransactions(_year: number) {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["finances"] });
+			toast.success("Lançamento excluído");
 		},
 	});
 

@@ -1,6 +1,10 @@
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Button } from "#/components/ui/button";
-import { CurrencyInput, fromCents } from "#/components/ui/currency-input";
+import {
+	CurrencyInput,
+	fromCents,
+	toCents,
+} from "#/components/ui/currency-input";
 import {
 	Dialog,
 	DialogContent,
@@ -18,6 +22,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { getDiasNoMes } from "#/lib/finance";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "../lib/categoryMeta";
 import type {
 	TransactionCategory,
@@ -37,6 +42,12 @@ interface AddEntryModalProps {
 		day: number;
 		recurrence: TransactionRecurrence;
 	}) => void;
+	/** When set, the modal opens in edit mode with pre-filled values */
+	editData?: {
+		value: number;
+		description: string;
+		recurrence: TransactionRecurrence;
+	};
 }
 
 export function AddEntryModal({
@@ -47,12 +58,30 @@ export function AddEntryModal({
 	year,
 	onClose,
 	onSave,
+	editData,
 }: AddEntryModalProps) {
 	const formId = useId();
 	const [valueCents, setValueCents] = useState(0);
 	const [description, setDescription] = useState("");
 	const [day, setDay] = useState(String(defaultDay));
 	const [recurrence, setRecurrence] = useState<TransactionRecurrence>("none");
+
+	const daysInMonth = getDiasNoMes(year, month);
+	const isEditing = Boolean(editData);
+
+	useEffect(() => {
+		if (open && editData) {
+			setValueCents(toCents(editData.value));
+			setDescription(editData.description);
+			setDay(String(defaultDay));
+			setRecurrence(editData.recurrence);
+		} else if (open) {
+			setValueCents(0);
+			setDescription("");
+			setDay(String(defaultDay));
+			setRecurrence("none");
+		}
+	}, [open, editData, defaultDay]);
 
 	const resetAndClose = useCallback(() => {
 		setValueCents(0);
@@ -82,6 +111,21 @@ export function AddEntryModal({
 		[valueCents, description, day, recurrence, onSave],
 	);
 
+	const handleDayChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const raw = e.target.value.replace(/\D/g, "");
+			if (raw === "") {
+				setDay("");
+				return;
+			}
+			const num = Number.parseInt(raw, 10);
+			if (num >= 1 && num <= daysInMonth) {
+				setDay(String(num));
+			}
+		},
+		[daysInMonth],
+	);
+
 	const label = CATEGORY_LABELS[category];
 	const colorClass = CATEGORY_COLORS[category];
 
@@ -98,7 +142,8 @@ export function AddEntryModal({
 						{label}
 					</DialogTitle>
 					<DialogDescription className="sr-only">
-						Adicionar novo lançamento de {label.toLowerCase()}
+						{isEditing ? "Editar" : "Adicionar novo"} lançamento de{" "}
+						{label.toLowerCase()}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -126,13 +171,20 @@ export function AddEntryModal({
 
 					<div className="space-y-2">
 						<Label htmlFor={`${formId}-date`}>Data</Label>
-						<Input
-							id={`${formId}-date`}
-							type="text"
-							readOnly
-							value={`${day}/${month}/${year}`}
-							className="bg-muted cursor-default"
-						/>
+						<div className="flex items-baseline gap-1">
+							<Input
+								id={`${formId}-date`}
+								type="text"
+								inputMode="numeric"
+								value={day}
+								onChange={handleDayChange}
+								className="h-8 w-10 px-1 text-center text-sm"
+								aria-label="Dia"
+							/>
+							<span className="text-sm text-muted-foreground">
+								/ {month} / {year}
+							</span>
+						</div>
 					</div>
 
 					<div className="space-y-2">
@@ -161,7 +213,7 @@ export function AddEntryModal({
 						Cancelar
 					</Button>
 					<Button type="submit" form={formId}>
-						Salvar
+						{isEditing ? "Atualizar" : "Salvar"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
