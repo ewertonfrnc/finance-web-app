@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { writeDayData } from "../service/localStorageAdapter";
 import {
 	addTransaction,
+	removeTransactionsFromSeries,
 	readTransactions,
 	removeTransaction,
 	sumTransactions,
 } from "../service/transactionStorage";
 import type {
+	Transaction,
 	TransactionCategory,
 	TransactionRecurrence,
 } from "../types/transaction";
@@ -38,11 +40,8 @@ interface AddParams {
 }
 
 interface DeleteParams {
-	year: number;
-	month: number;
-	day: number;
-	category: TransactionCategory;
-	id: string;
+	tx: Transaction;
+	scope: "single" | "this-and-next";
 }
 
 interface OccurrenceDate {
@@ -125,6 +124,8 @@ export function useTransactions(_year: number) {
 	const addMutation = useMutation({
 		mutationFn: async (params: AddParams) => {
 			const occurrences = buildOccurrences(params);
+			const seriesId =
+				params.recurrence === "none" ? undefined : generateId();
 
 			occurrences.forEach((date) => {
 				addTransaction({
@@ -135,6 +136,8 @@ export function useTransactions(_year: number) {
 					year: date.year,
 					month: date.month,
 					day: date.day,
+					recurrence: params.recurrence,
+					seriesId,
 				});
 
 				recalcDayField(date.year, date.month, date.day, params.category);
@@ -147,14 +150,46 @@ export function useTransactions(_year: number) {
 
 	const deleteMutation = useMutation({
 		mutationFn: async (params: DeleteParams) => {
+			if (
+				params.scope === "this-and-next" &&
+				params.tx.seriesId &&
+				params.tx.recurrence &&
+				params.tx.recurrence !== "none"
+			) {
+				const affectedDates = removeTransactionsFromSeries({
+					seriesId: params.tx.seriesId,
+					category: params.tx.category,
+					from: {
+						year: params.tx.year,
+						month: params.tx.month,
+						day: params.tx.day,
+					},
+				});
+
+				affectedDates.forEach((date) => {
+					recalcDayField(
+						date.year,
+						date.month,
+						date.day,
+						params.tx.category,
+					);
+				});
+				return;
+			}
+
 			removeTransaction(
-				params.year,
-				params.month,
-				params.day,
-				params.category,
-				params.id,
+				params.tx.year,
+				params.tx.month,
+				params.tx.day,
+				params.tx.category,
+				params.tx.id,
 			);
-			recalcDayField(params.year, params.month, params.day, params.category);
+			recalcDayField(
+				params.tx.year,
+				params.tx.month,
+				params.tx.day,
+				params.tx.category,
+			);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["finances"] });

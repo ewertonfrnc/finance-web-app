@@ -19,7 +19,7 @@ interface EntryListModalProps {
 	year: number;
 	transactions: Transaction[];
 	onClose: () => void;
-	onDelete: (id: string) => void;
+	onDelete: (tx: Transaction) => void;
 }
 
 export function EntryListModal({
@@ -81,7 +81,7 @@ export function EntryListModal({
 										variant="ghost"
 										size="icon"
 										className="h-7 w-7 text-destructive hover:text-destructive"
-										onClick={() => onDelete(tx.id)}
+										onClick={() => onDelete(tx)}
 										aria-label={`Excluir ${tx.description}`}
 									>
 										<Trash2 className="h-3.5 w-3.5" />

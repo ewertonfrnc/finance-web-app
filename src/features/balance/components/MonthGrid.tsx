@@ -15,6 +15,7 @@ export function MonthGrid({ year }: MonthGridProps) {
 	const { data: financeYear, isLoading, isError } = useFinanceYear(year);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const monthRefs = useRef<Record<number, HTMLDivElement | null>>({});
+	const focusedYearRef = useRef<number | null>(null);
 
 	const saldosIniciaisMes = useMemo(() => {
 		if (!financeYear) return {};
@@ -47,6 +48,7 @@ export function MonthGrid({ year }: MonthGridProps) {
 
 	useEffect(() => {
 		if (!financeYear) return;
+		if (focusedYearRef.current === year) return;
 
 		const container = containerRef.current;
 		const el = monthRefs.current[targetMonth];
@@ -59,7 +61,8 @@ export function MonthGrid({ year }: MonthGridProps) {
 		});
 
 		el.focus({ preventScroll: true });
-	}, [targetMonth, financeYear]);
+		focusedYearRef.current = year;
+	}, [year, targetMonth, financeYear]);
 
 	if (isLoading) {
 		return (

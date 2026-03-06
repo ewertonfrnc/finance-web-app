@@ -11,6 +11,7 @@ import type {
 	TransactionRecurrence,
 } from "../types/transaction";
 import { ClickableCell } from "./ClickableCell";
+import { DeleteRecurrenceModal } from "./DeleteRecurrenceModal";
 
 const AddEntryModal = React.lazy(() =>
 	import("./AddEntryModal").then((m) => ({ default: m.AddEntryModal })),
@@ -36,11 +37,8 @@ interface DayRowProps {
 		recurrence: TransactionRecurrence;
 	}) => void;
 	onDeleteTransaction: (params: {
-		year: number;
-		month: number;
-		day: number;
-		category: TransactionCategory;
-		id: string;
+		tx: Transaction;
+		scope: "single" | "this-and-next";
 	}) => void;
 }
 
@@ -94,6 +92,8 @@ const DayRow = React.memo(function DayRow({
 	onDeleteTransaction,
 }: DayRowProps) {
 	const [modal, setModal] = useState<ModalState>({ type: "closed" });
+	const [pendingRecurringDelete, setPendingRecurringDelete] =
+		useState<Transaction | null>(null);
 
 	const dayIsToday = isToday(year, month, day);
 	const dayOfWeek = new Date(year, month - 1, day).getDay();
@@ -144,17 +144,17 @@ const DayRow = React.memo(function DayRow({
 		[modal, year, month, onAddTransaction],
 	);
 
-	const handleDeleteEntry = useCallback(
-		(id: string) => {
+	const applyDelete = useCallback(
+		(tx: Transaction, scope: "single" | "this-and-next") => {
+			onDeleteTransaction({ tx, scope });
+
 			if (modal.type !== "list") return;
-			onDeleteTransaction({
-				year,
-				month,
-				day,
-				category: modal.category,
-				id,
-			});
-			const remaining = modal.transactions.filter((tx) => tx.id !== id);
+
+			const remaining =
+				scope === "this-and-next" && tx.seriesId
+					? modal.transactions.filter((item) => item.seriesId !== tx.seriesId)
+					: modal.transactions.filter((item) => item.id !== tx.id);
+
 			if (remaining.length === 0) {
 				setModal({ type: "closed" });
 			} else {
@@ -165,8 +165,40 @@ const DayRow = React.memo(function DayRow({
 				});
 			}
 		},
-		[modal, year, month, day, onDeleteTransaction],
+		[modal, onDeleteTransaction],
 	);
+
+	const handleDeleteEntry = useCallback(
+		(tx: Transaction) => {
+			if (modal.type !== "list") return;
+			const isRecurring =
+				tx.recurrence && tx.recurrence !== "none" && Boolean(tx.seriesId);
+
+			if (isRecurring) {
+				setPendingRecurringDelete(tx);
+				return;
+			}
+
+			applyDelete(tx, "single");
+		},
+		[modal, applyDelete],
+	);
+
+	const handleCloseDeleteRecurrenceModal = useCallback(() => {
+		setPendingRecurringDelete(null);
+	}, []);
+
+	const handleDeleteSingle = useCallback(() => {
+		if (!pendingRecurringDelete) return;
+		applyDelete(pendingRecurringDelete, "single");
+		setPendingRecurringDelete(null);
+	}, [pendingRecurringDelete, applyDelete]);
+
+	const handleDeleteThisAndNext = useCallback(() => {
+		if (!pendingRecurringDelete) return;
+		applyDelete(pendingRecurringDelete, "this-and-next");
+		setPendingRecurringDelete(null);
+	}, [pendingRecurringDelete, applyDelete]);
 
 	const rowClass = dayIsToday ? "bg-primary/5 font-semibold" : "";
 	const dayCellClass = cn(
@@ -237,6 +269,14 @@ const DayRow = React.memo(function DayRow({
 					)}
 				</Suspense>
 			)}
+
+			<DeleteRecurrenceModal
+				open={pendingRecurringDelete !== null}
+				tx={pendingRecurringDelete}
+				onClose={handleCloseDeleteRecurrenceModal}
+				onDeleteSingle={handleDeleteSingle}
+				onDeleteThisAndNext={handleDeleteThisAndNext}
+			/>
 		</>
 	);
 });

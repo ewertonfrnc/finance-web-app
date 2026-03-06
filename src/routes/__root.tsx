@@ -19,7 +19,7 @@ function RootComponent() {
 				<ThemeToggle />
 			</div>
 			<Outlet />
-			<TanStackDevtools
+			{/* <TanStackDevtools
 				config={{ position: "bottom-right" }}
 				plugins={[
 					{
@@ -27,7 +27,7 @@ function RootComponent() {
 						render: <TanStackRouterDevtoolsPanel />,
 					},
 				]}
-			/>
+			/> */}
 		</QueryClientProvider>
 	);
 }

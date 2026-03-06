@@ -14,4 +14,6 @@ export interface Transaction {
 	year: number;
 	month: number;
 	day: number;
+	recurrence?: TransactionRecurrence;
+	seriesId?: string;
 }
