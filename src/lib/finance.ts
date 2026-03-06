@@ -106,7 +106,7 @@ export function calcularTotaisMes(days: Record<number, DayEntry>): MonthTotals {
 }
 
 export function getSaldoColor(value: number, saldoInicial: number): SaldoColor {
-	if (saldoInicial === 0) {
+	if (saldoInicial <= 0) {
 		if (value > 2000) return "dark-green";
 		if (value > 1000) return "light-green";
 		if (value >= 0) return "yellow";
