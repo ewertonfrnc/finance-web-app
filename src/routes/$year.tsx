@@ -3,9 +3,14 @@ import { MonthGrid } from "#/features/balance/components/MonthGrid";
 import { OnboardingModal } from "#/features/balance/components/OnboardingModal";
 import { useOnboarding } from "#/features/balance/hooks/useOnboarding";
 import { YearNav } from "#/features/year-navigation/components/YearNav";
+import { isAuthenticated } from "#/lib/auth";
 
 export const Route = createFileRoute("/$year")({
 	beforeLoad: ({ params }) => {
+		if (!isAuthenticated()) {
+			throw redirect({ to: "/login" });
+		}
+
 		const parsed = Number.parseInt(params.year, 10);
 		if (Number.isNaN(parsed) || parsed < 1900 || parsed > 2100) {
 			throw redirect({
