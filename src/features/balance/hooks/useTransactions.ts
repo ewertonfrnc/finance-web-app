@@ -4,6 +4,7 @@ import {
 	createTransaction,
 	deleteTransaction,
 	listTransactions,
+	updateTransaction,
 } from "../service/transactionApi";
 import type { TransactionCategory } from "../types/transaction";
 
@@ -23,6 +24,19 @@ export function useTransactions(_year: number) {
 		},
 	});
 
+	const updateMutation = useMutation({
+		mutationFn: updateTransaction,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["balance"] });
+			toast.success("Lançamento atualizado");
+		},
+		onError: (error) => {
+			toast.error(
+				error instanceof Error ? error.message : "Erro ao atualizar lançamento",
+			);
+		},
+	});
+
 	const deleteMutation = useMutation({
 		mutationFn: deleteTransaction,
 		onSuccess: () => {
@@ -38,6 +52,7 @@ export function useTransactions(_year: number) {
 
 	return {
 		addTransaction: addMutation.mutateAsync,
+		updateTransaction: updateMutation.mutateAsync,
 		deleteTransaction: deleteMutation.mutateAsync,
 		getTransactions: async (
 			year: number,

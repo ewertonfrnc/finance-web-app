@@ -4,7 +4,12 @@ export type TransactionCategory =
 	| "diario"
 	| "economias";
 
-export type TransactionRecurrence = "none" | "daily" | "weekly" | "monthly";
+export type TransactionRecurrence =
+	| "none"
+	| "daily"
+	| "weekly"
+	| "monthly"
+	| "yearly";
 
 export interface Transaction {
 	id: string;
@@ -16,4 +21,5 @@ export interface Transaction {
 	day: number;
 	recurrence?: TransactionRecurrence;
 	seriesId?: string;
+	tag?: string;
 }

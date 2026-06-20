@@ -18,9 +18,12 @@ import type {
 	TransactionCategory,
 	TransactionRecurrence,
 } from "../types/transaction";
-import { AddEntryModal } from "./AddEntryModal";
 import { CategoryMark } from "./CategoryMark";
 import { DeleteRecurrenceModal } from "./DeleteRecurrenceModal";
+import {
+	TransactionEditor,
+	type TransactionEditorSaveData,
+} from "./TransactionEditor";
 
 interface SelectedDay {
 	year: number;
@@ -44,6 +47,7 @@ interface DayDrawerProps {
 		value: number;
 		description: string;
 		recurrence: TransactionRecurrence;
+		recurrenceEndDate?: string;
 	}) => Promise<void>;
 	onDeleteTransaction: (params: {
 		tx: Transaction;
@@ -62,7 +66,7 @@ type ActiveTab = "todas" | TransactionCategory;
 type EditorState =
 	| { type: "closed" }
 	| { type: "add"; category: TransactionCategory }
-	| { type: "edit"; category: TransactionCategory; tx: Transaction };
+	| { type: "edit"; tx: Transaction };
 
 const TABS: Array<{ key: ActiveTab; label: string }> = [
 	{ key: "todas", label: "Todas" },
@@ -175,12 +179,7 @@ export function DayDrawer({
 	);
 
 	const saveEntry = useCallback(
-		async (data: {
-			value: number;
-			description: string;
-			day: number;
-			recurrence: TransactionRecurrence;
-		}) => {
+		async (data: TransactionEditorSaveData) => {
 			if (!selectedDay || editor.type === "closed") return;
 
 			if (editor.type === "edit") {
@@ -195,13 +194,14 @@ export function DayDrawer({
 			}
 
 			await onAddTransaction({
-				year: selectedDay.year,
-				month: selectedDay.month,
-				day: data.day,
-				category: editor.category,
+				year: data.date.year,
+				month: data.date.month,
+				day: data.date.day,
+				category: data.category,
 				value: data.value,
 				description: data.description,
 				recurrence: data.recurrence,
+				recurrenceEndDate: data.recurrenceEndDate,
 			});
 
 			setEditor({ type: "closed" });
@@ -435,9 +435,7 @@ export function DayDrawer({
 												type="button"
 												variant="ghost"
 												size="icon-sm"
-												onClick={() =>
-													setEditor({ type: "edit", category: tx.category, tx })
-												}
+												onClick={() => setEditor({ type: "edit", tx })}
 												aria-label={`Editar ${tx.description || "lançamento"}`}
 											>
 												<Pencil />
@@ -472,26 +470,44 @@ export function DayDrawer({
 				</footer>
 			</aside>
 
-			{editor.type !== "closed" && (
-				<AddEntryModal
-					open
-					category={editor.category}
-					defaultDay={selectedDay.day}
-					month={selectedDay.month}
-					year={selectedDay.year}
-					onClose={() => setEditor({ type: "closed" })}
-					onSave={saveEntry}
-					editData={
-						editor.type === "edit"
-							? {
-									value: editor.tx.value,
-									description: editor.tx.description,
-									recurrence: editor.tx.recurrence ?? "none",
-								}
-							: undefined
-					}
-				/>
-			)}
+			<TransactionEditor
+				open={editor.type !== "closed"}
+				defaultCategory={
+					editor.type === "add"
+						? editor.category
+						: editor.type === "edit"
+							? editor.tx.category
+							: addCategory
+				}
+				defaultDate={selectedDay}
+				onClose={() => setEditor({ type: "closed" })}
+				onSave={saveEntry}
+				editData={
+					editor.type === "edit"
+						? {
+								category: editor.tx.category,
+								value: editor.tx.value,
+								description: editor.tx.description,
+								date: {
+									year: editor.tx.year,
+									month: editor.tx.month,
+									day: editor.tx.day,
+								},
+								recurrence: editor.tx.recurrence ?? "none",
+								tag: editor.tx.tag,
+							}
+						: undefined
+				}
+				onDelete={
+					editor.type === "edit"
+						? () => {
+								const tx = editor.tx;
+								setEditor({ type: "closed" });
+								requestDelete(tx);
+							}
+						: undefined
+				}
+			/>
 
 			<DeleteRecurrenceModal
 				open={pendingRecurringDelete !== null}

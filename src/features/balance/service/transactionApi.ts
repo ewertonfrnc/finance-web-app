@@ -48,6 +48,22 @@ interface CreateTransactionParams {
 	value: number;
 	description: string;
 	recurrence: TransactionRecurrence;
+	recurrenceEndDate?: string;
+	tag?: string;
+}
+
+interface UpdateTransactionParams {
+	id: string;
+	seriesId?: string;
+	year: number;
+	month: number;
+	day: number;
+	category: TransactionCategory;
+	value: number;
+	description: string;
+	recurrence: TransactionRecurrence;
+	scope: "single" | "following";
+	tag?: string;
 }
 
 function toDateString(year: number, month: number, day: number): string {
@@ -81,6 +97,22 @@ export async function createTransaction(
 		description: params.description,
 		date: toDateString(params.year, params.month, params.day),
 		recurrence: params.recurrence,
+		...(params.recurrenceEndDate
+			? { recurrence_end_date: params.recurrenceEndDate }
+			: {}),
+	});
+}
+
+export async function updateTransaction(
+	params: UpdateTransactionParams,
+): Promise<void> {
+	await apiClient.patch(`/v1/transactions/${params.id}`, {
+		type: TYPE_BY_CATEGORY[params.category],
+		amount: reaisToCents(params.value),
+		description: params.description,
+		date: toDateString(params.year, params.month, params.day),
+		recurrence: params.recurrence,
+		scope: params.scope,
 	});
 }
 

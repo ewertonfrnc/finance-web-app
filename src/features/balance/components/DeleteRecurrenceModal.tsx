@@ -22,6 +22,7 @@ const RECURRENCE_LABELS = {
 	daily: "diaria",
 	weekly: "semanal",
 	monthly: "mensal",
+	yearly: "anual",
 	none: "sem repeticao",
 } as const;
 
