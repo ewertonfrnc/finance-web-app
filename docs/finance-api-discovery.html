@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>finance-api · Discovery para integração com o web-app</title>
+<style>
+  :root{
+    --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --line:#2c3145;
+    --text:#e6e8f0; --mute:#9aa3bd; --faint:#6b7390;
+    --blue:#5b8cff; --green:#46c08a; --amber:#e7b85f; --red:#e26d6d; --purple:#a98bff; --teal:#48c9c0;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55;font-size:15px}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+  header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
+  header.top h1{margin:0 0 6px;font-size:24px;letter-spacing:-.3px}
+  header.top .sub{color:var(--mute);font-size:13px}
+  h2{font-size:18px;margin:38px 0 14px;letter-spacing:-.2px;border-left:3px solid var(--blue);padding-left:10px}
+  h3{font-size:14px;margin:22px 0 8px;color:var(--text);text-transform:uppercase;letter-spacing:.5px}
+  p{color:var(--text)}
+  code,.mono{font-family:var(--mono);font-size:.86em}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:780px){.g2,.g3{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  td .mono{color:var(--teal)}
+  .pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+  .get{background:rgba(70,192,138,.15);color:var(--green)}
+  .post{background:rgba(91,140,255,.15);color:var(--blue)}
+  .put{background:rgba(169,139,255,.15);color:var(--purple)}
+  .patch{background:rgba(231,184,95,.15);color:var(--amber)}
+  .del{background:rgba(226,109,109,.15);color:var(--red)}
+  .flow{font-family:var(--mono);font-size:12.5px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;color:var(--mute)}
+  .flow b{color:var(--text)}
+  .flow .acc{color:var(--teal)}
+  .tag{display:inline-block;background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:var(--mono);font-size:11px;color:var(--mute)}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)} .q{color:var(--purple)}
+  ul.tight{margin:6px 0;padding-left:20px} ul.tight li{margin:4px 0}
+  .alert{border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13.5px;border:1px solid}
+  .alert.warn{background:rgba(231,184,95,.08);border-color:rgba(231,184,95,.35)}
+  .alert.info{background:rgba(91,140,255,.08);border-color:rgba(91,140,255,.35)}
+  .alert.good{background:rgba(70,192,138,.08);border-color:rgba(70,192,138,.35)}
+  .boxmap{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-family:var(--mono);font-size:12px}
+  .box{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+  .box .t{color:var(--text);font-weight:600} .box .s{color:var(--faint);font-size:11px}
+  .arrow{color:var(--faint)}
+  .filecol{color:var(--faint);font-family:var(--mono);font-size:11px}
+  strong{color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>finance-api — Discovery para integração com o <span style="color:var(--blue)">finance-web-app</span></h1>
+  <div class="sub">Backend Go/Postgres · gerado 2026-06-20 · foco: <b>o que o backend já computa</b> e o que o front pode deixar de calcular</div>
+</header>
+
+<div class="alert good">
+  <b>Conclusão em uma linha:</b> o <code>finance-api</code> já calcula <b>saldo diário acumulado, carry-forward entre meses (com cache), projeção de dias futuros, expansão de recorrência (daily/weekly/monthly/yearly + exceções + edição por escopo), o valor do "diário" e tags</b>. O web-app hoje refaz quase tudo isso no cliente sobre <code>finance.json</code> + <code>localStorage</code>. Integrar = apagar essa camada local e consumir a API.
+</div>
+
+<h2>1. Contrato da stack</h2>
+<div class="grid g3">
+  <div class="card"><h3 style="margin-top:0">Runtime</h3>
+    Go + <span class="tag">chi v5</span> router · Postgres via <span class="tag">lib/pq</span> · JWT <span class="tag">golang-jwt</span> · migrations <span class="tag">golang-migrate</span> · hot reload <span class="tag">air</span> · <span class="tag">docker-compose</span> p/ DB.
+  </div>
+  <div class="card"><h3 style="margin-top:0">Comandos</h3>
+    <code>air</code> (dev) · <code>go build -o bin/main ./cmd/api</code> · <code>go test ./...</code> · <code>make migrate-up</code> · <code>make seed</code>.
+  </div>
+  <div class="card"><h3 style="margin-top:0">Invariantes</h3>
+    <ul class="tight">
+      <li><b>Dinheiro = int64 centavos</b> (nunca float).</li>
+      <li>Tipos PT-BR <b>singular</b>: <code>entrada saida diario economia</code>.</li>
+      <li>Envelope: <code>{success, data}</code> (+<code>meta</code> em listas).</li>
+      <li>Auth: JWT → <code>userID</code> no ctx; tudo escopado por usuário.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>2. Mapa de módulos</h2>
+<div class="card">
+  <div class="boxmap">
+    <div class="box"><div class="t">cmd/api</div><div class="s">handlers (package main)</div></div>
+    <span class="arrow">──▶</span>
+    <div class="box"><div class="t">internal/store</div><div class="s">Storage{Users,Transactions,<br>BudgetCategories,DailyBudgetConfigs,<br>Tags,BalanceCache}</div></div>
+    <span class="arrow">──▶</span>
+    <div class="box"><div class="t">Postgres</div><div class="s">10 migrations</div></div>
+  </div>
+  <div style="margin-top:14px" class="boxmap">
+    <span class="filecol">suporte:</span>
+    <div class="box"><div class="t">internal/auth</div><div class="s">Authenticator / JWT</div></div>
+    <div class="box"><div class="t">internal/db</div><div class="s">pool sql.DB</div></div>
+    <div class="box"><div class="t">internal/mailer</div><div class="s">reset de senha</div></div>
+    <div class="box"><div class="t">internal/env</div><div class="s">env tipado</div></div>
+  </div>
+</div>
+
+<h2>3. Endpoints implementados (fonte: <code>cmd/api/api.go</code>)</h2>
+<div class="alert warn">
+  <b>Atenção:</b> a rota real é <b>plana e por usuário</b> (<code>/v1/balance</code>, <code>/v1/transactions</code>…), <b>não</b> o <code>/v1/accounts/:accountId/…</code> que aparece em <code>docs/06-proposta-de-api.md</code> (aspiracional). Use a tabela abaixo como verdade.
+</div>
+<table>
+  <tr><th>Método</th><th>Rota</th><th>O que faz / retorna</th><th>Arquivo</th></tr>
+  <tr><td><span class="pill post">POST</span></td><td class="mono">/v1/auth/register</td><td>Cria usuário + categorias de orçamento + config de diário; <code>InitialBalance</code>, <code>DaysPerMonth</code>.</td><td class="filecol">auth.go</td></tr>
+  <tr><td><span class="pill post">POST</span></td><td class="mono">/v1/auth/login</td><td>→ <code>{ token, user }</code>.</td><td class="filecol">auth.go</td></tr>
+  <tr><td><span class="pill post">POST</span></td><td class="mono">/v1/auth/forgot-password · reset-password</td><td>Fluxo de recuperação por e-mail.</td><td class="filecol">auth.go</td></tr>
+  <tr><td><span class="pill get">GET</span></td><td class="mono">/v1/balance?year=&month=</td><td><b>★ O coração.</b> <code>[]DayBalance</code> do mês com saldo acumulado + projeção. <b>Mensal (year+month obrigatórios).</b></td><td class="filecol">balance.go</td></tr>
+  <tr><td><span class="pill post">POST</span></td><td class="mono">/v1/transactions</td><td>Cria transação (+ tags); recorrência none/daily/weekly/monthly/yearly + <code>recurrence_end_date</code>.</td><td class="filecol">transactions.go</td></tr>
+  <tr><td><span class="pill get">GET</span></td><td class="mono">/v1/transactions?year=&month=&day=&type=</td><td>Lista expandindo recorrências; inclui tags.</td><td class="filecol">transactions.go</td></tr>
+  <tr><td><span class="pill get">GET</span> <span class="pill patch">PATCH</span> <span class="pill del">DELETE</span></td><td class="mono">/v1/transactions/{id}</td><td>CRUD; edição/exclusão recorrente por <b>scope=single|following|all</b> + <code>date</code>/<code>instance_date</code>.</td><td class="filecol">transactions.go</td></tr>
+  <tr><td><span class="pill put">PUT</span></td><td class="mono">/v1/transactions/{id}/tags</td><td>Substitui as tags da transação.</td><td class="filecol">tags.go</td></tr>
+  <tr><td><span class="pill get">GET</span></td><td class="mono">/v1/budget/preview</td><td>→ <code>{ daily_budget, categories }</code>. <b>daily_budget.amount = o "diário"</b> (centavos).</td><td class="filecol">budget.go</td></tr>
+  <tr><td><span class="pill put">PUT</span> <span class="pill del">DELETE</span></td><td class="mono">/v1/budget/categories/{slug}</td><td>Atualiza/remove categoria → <b>recalcula o diário</b>.</td><td class="filecol">budget.go</td></tr>
+  <tr><td><span class="pill get">GET</span> <span class="pill post">POST</span></td><td class="mono">/v1/tags</td><td>Lista (com <code>monthly_total</code>) / cria tag (entidade com id+cor).</td><td class="filecol">tags.go</td></tr>
+  <tr><td><span class="pill patch">PATCH</span> <span class="pill del">DELETE</span> <span class="pill get">GET</span></td><td class="mono">/v1/tags/{id}[/transactions]</td><td>Edita/remove tag; lista transações da tag.</td><td class="filecol">tags.go</td></tr>
+</table>
+
+<h2>4. Fluxo do <code>/v1/balance</code> (o que substitui o cálculo local)</h2>
+<div class="flow">
+GET /v1/balance?year=2026&month=6<br>
+&nbsp;&nbsp;│ <span class="acc">requireAuth</span> → userID<br>
+&nbsp;&nbsp;│ <b>DailyBudgetConfigs.GetConfigAt(userID, 1º do mês)</b> → <span class="acc">config.Amount</span> (o "diário", versionado por valid_from)<br>
+&nbsp;&nbsp;│ <b>BalanceCache.Get(mês anterior)</b> → carryForward <span class="acc">(cache hit)</span><br>
+&nbsp;&nbsp;│ &nbsp;&nbsp;else <b>Transactions.GetNetBalanceBefore(1º do mês)</b> → soma tudo antes (expande recorrência em SQL)<br>
+&nbsp;&nbsp;│ <b>adjustCarryForward</b> → desconta diário projetado se o mês é futuro<br>
+&nbsp;&nbsp;│ <b>Transactions.GetDailyTotals(from,to)</b> → totais por dia/tipo (recorrência expandida via generate_series + exceptions)<br>
+&nbsp;&nbsp;│ <b>computeMonthlyBalance</b> → para cada dia: running += income − expense − (dailyActual + <span class="acc">dailyProjected</span>) − savings<br>
+&nbsp;&nbsp;│ &nbsp;&nbsp;dailyProjected = config.Amount se dia &gt; hoje (senão 0)<br>
+&nbsp;&nbsp;│ se mês já fechou → <b>BalanceCache.Set</b><br>
+&nbsp;&nbsp;▼ <span class="acc">[]DayBalance{ day, income, expense, daily, daily_projected, savings, running_balance }</span>
+</div>
+<div class="alert info">
+  <b>Runway dos mockups = backend, não constante.</b> O <code>≈ N dias</code> = <code>running_balance ÷ daily_budget.amount</code>. O <code>R$ 53,33</code> do prompt é só o exemplo; o valor real é <code>config.Amount</code> de <code>/v1/budget/preview</code>. O front só precisa <b>dividir e colorir</b>.
+</div>
+
+<h2>5. Tipos que cruzam a fronteira</h2>
+<div class="grid g2">
+  <div class="card"><h3 style="margin-top:0">DayBalance <span class="filecol">(balance.go)</span></h3>
+    <code>day:int · income · expense · daily · daily_projected · savings · running_balance</code> — todos <b>int64 centavos</b>.
+  </div>
+  <div class="card"><h3 style="margin-top:0">Transaction <span class="filecol">(store/transactions.go)</span></h3>
+    <code>id · type · amount · description · date("2006-01-02") · recurrence · series_id? · recurrence_end_date? · source_series_id? · source_occurrence_date? · tags[]</code>
+  </div>
+  <div class="card"><h3 style="margin-top:0">DailyBudgetConfig</h3>
+    <code>amount</code> (diário, centavos) · <code>days_per_month</code> · <code>valid_from</code> (versionado).
+  </div>
+  <div class="card"><h3 style="margin-top:0">Tag · BudgetCategory · User</h3>
+    Tag: <code>id·name·color·monthly_total</code>. Category: <code>slug·label·monthly_amount·color</code>. User: <code>initial_balance·onboarding_done</code>.
+  </div>
+</div>
+
+<h2>6. Mapeamento: o que o web-app calcula HOJE → backend</h2>
+<table>
+  <tr><th>No front hoje</th><th>Arquivo web-app</th><th>Backend equivalente</th><th>Ação</th></tr>
+  <tr><td>Saldo diário acumulado</td><td class="filecol">lib/finance.ts · calcularSaldosMes</td><td class="mono">GET /balance → running_balance</td><td class="bad">remover</td></tr>
+  <tr><td>Saldo inicial do mês (carry)</td><td class="filecol">calcularSaldoInicialMes · MonthGrid</td><td class="mono">balance (carry + cache)</td><td class="bad">remover</td></tr>
+  <tr><td>Saldo inicial do ano</td><td class="filecol">financeService.resolveInitialBalanceForYear</td><td class="mono">GetNetBalanceBefore (server)</td><td class="bad">remover</td></tr>
+  <tr><td>Projeção do diário futuro</td><td class="filecol">financeService.buildYearMonths</td><td class="mono">daily_projected</td><td class="bad">remover</td></tr>
+  <tr><td>Totais do mês</td><td class="filecol">calcularTotaisMes</td><td>somar income/expense de DayBalance</td><td class="warn">derivar</td></tr>
+  <tr><td>Expansão de recorrência</td><td class="filecol">useTransactions.buildOccurrences</td><td class="mono">SQL generate_series + exceptions</td><td class="bad">remover</td></tr>
+  <tr><td>Exclusão de série (this-and-next)</td><td class="filecol">transactionStorage.removeTransactionsFromSeries</td><td class="mono">DELETE ?scope=following</td><td class="bad">remover</td></tr>
+  <tr><td>Valor do diário (onboarding ÷30)</td><td class="filecol">useOnboarding · localStorageAdapter</td><td class="mono">/budget/preview · register</td><td class="bad">remover</td></tr>
+  <tr><td>Persistência de dia/tx</td><td class="filecol">localStorageAdapter · transactionStorage · finance.json</td><td>Postgres via API</td><td class="bad">remover</td></tr>
+  <tr><td>Cor do saldo (faixas)</td><td class="filecol">getSaldoColor</td><td>—</td><td class="ok">manter (vira runway)</td></tr>
+  <tr><td>formatBRL · weekday · nomes de mês</td><td class="filecol">lib/finance.ts</td><td>—</td><td class="ok">manter (apresentação)</td></tr>
+  <tr><td>Sparkline · pico/vale</td><td class="filecol">(a criar)</td><td>derivar de running_balance dos 12 meses</td><td class="ok">manter no front</td></tr>
+</table>
+
+<h2>7. Lacunas e decisões para a integração</h2>
+<div class="grid g2">
+  <div class="card"><h3 style="margin-top:0"><span class="warn">⚠ Balance é só mensal</span></h3>
+    Trilho/Foco mostram 12 meses. Opções: <b>(a)</b> 12× <code>GET /balance</code> em paralelo (TanStack Query, cache por mês) — funciona já; <b>(b)</b> adicionar <code>GET /balance?year=</code> retornando os 12 meses (previsto no doc 06). Recomendo (a) agora, (b) como follow-up de backend.
+  </div>
+  <div class="card"><h3 style="margin-top:0"><span class="bad">✗ Web-app não tem auth</span></h3>
+    API exige JWT. O app é local-only hoje (sem login/registro). Integrar exige <b>client HTTP com token</b>, telas de login/registro/onboarding e storage do token. <b>Mudança grande</b> — ver decisão abaixo.
+  </div>
+  <div class="card"><h3 style="margin-top:0"><span class="q">? Tags: entidade vs string</span></h3>
+    O plano do web-app tratava etiqueta como <code>string</code>. O backend tem <b>tags como entidade</b> (id, cor, M:N). Os chips "Assinatura/Fixo/Bônus/Reembolso" viram tags reais (criar/selecionar via <code>/tags</code>).
+  </div>
+  <div class="card"><h3 style="margin-top:0"><span class="warn">⚠ Contratos a alinhar</span></h3>
+    <ul class="tight">
+      <li>Tipos <b>plural↔singular</b>: <code>entradas</code>↔<code>entrada</code> etc.</li>
+      <li><b>Centavos</b> no fio (já há <code>toCents/fromCents</code>).</li>
+      <li>Desempacotar <code>.data</code> do envelope.</li>
+      <li>Datas <code>YYYY-MM-DD</code> (cuidado com DATE→RFC3339 do lib/pq, já tratado no server).</li>
+      <li>CORS aceita <code>http://localhost:*</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="alert warn" style="margin-top:18px">
+  <b>Decisão de arquitetura (precisa do seu ok):</b> integrar a API é trocar a fundação do web-app de <b>local-only</b> para <b>cliente autenticado</b>. Caminhos: <b>(1) Cutover total</b> — remove JSON/localStorage, adiciona auth, tudo via API (mais limpo, mais trabalho, exige backend rodando); <b>(2) Incremental</b> — camada de serviço com flag, troca hook a hook (<code>useFinanceYear</code> → <code>/balance</code> primeiro), mantém fallback local; <b>(3) Adiar</b> — segue o plano local-only e integra depois. Isto está registrado no plano (<code>folga-desktop-plan.md</code>, nova Fase 0).
+</div>
+
+<h2>8. Gotchas observados no código</h2>
+<ul class="tight">
+  <li><b class="warn">lib/pq DATE → RFC3339:</b> coluna DATE escaneada como string volta <code>"...T00:00:00Z"</code>; <code>parseBalanceDate</code> tem fallback (regressão já conhecida do projeto).</li>
+  <li><b>Cache de saldo</b> (<code>month_balance_cache</code>) é invalidado a partir do mês da transação a cada create/update/delete — o front não precisa se preocupar com staleness.</li>
+  <li><b>Edição recorrente</b> usa <code>transaction_exceptions</code> + <code>source_series_id/source_occurrence_date</code>: modelo bem mais robusto que o <code>seriesId</code> simples do localStorage atual.</li>
+  <li><b>adjustCarryForward</b>: ao abrir um mês futuro, o saldo inicial já vem descontado da projeção diária acumulada — replicar isso no front seria fácil de errar; mais um motivo para confiar no server.</li>
+  <li><code>docs/06</code> descreve rotas <code>/accounts/:accountId</code> que <b>não existem</b>; ignore, use <code>api.go</code>.</li>
+</ul>
+
+<p style="color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px">
+  Discovery gerado para orientar a integração. Verdade do contrato = <code>cmd/api/api.go</code> + <code>cmd/api/balance.go</code> + <code>internal/store/*</code>. Plano relacionado: <code>finance-web-app/docs/folga-desktop-plan.md</code>.
+</p>
+</div>
+</body>
+</html>

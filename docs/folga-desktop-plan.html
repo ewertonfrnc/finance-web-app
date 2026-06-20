@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folga Desktop — Plano (Trilho + Foco)</title>
+<style>
+  :root{
+    --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --line:#2c3145;
+    --text:#e6e8f0; --mute:#9aa3bd; --faint:#6b7390;
+    --blue:#5b8cff; --green:#46c08a; --amber:#e7b85f; --red:#e26d6d; --purple:#a98bff; --teal:#48c9c0;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  code,.mono{font-family:var(--mono);font-size:.86em;color:var(--teal)}
+  strong{color:#fff}
+
+  /* sticky nav */
+  nav.toc{position:sticky;top:0;z-index:10;background:rgba(15,17,23,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);margin:0 -24px 28px;padding:12px 24px;display:flex;flex-wrap:wrap;gap:6px}
+  nav.toc a{font-size:12px;color:var(--mute);padding:4px 10px;border-radius:20px;border:1px solid transparent}
+  nav.toc a:hover{color:var(--text);border-color:var(--line);text-decoration:none;background:var(--surface)}
+
+  header.top{padding:40px 0 22px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  header.top h1{margin:0 0 8px;font-size:27px;letter-spacing:-.4px}
+  header.top .sub{color:var(--mute);font-size:13.5px;max-width:760px}
+
+  h2{font-size:19px;margin:46px 0 16px;letter-spacing:-.2px;padding-left:12px;border-left:3px solid var(--blue);scroll-margin-top:64px}
+  h3{font-size:13px;margin:20px 0 8px;color:var(--mute);text-transform:uppercase;letter-spacing:.6px}
+  p{color:var(--text)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr}}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .filecol{color:var(--faint);font-family:var(--mono);font-size:11px}
+
+  /* status chips */
+  .st{display:inline-block;padding:1px 8px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+  .done{background:rgba(70,192,138,.16);color:var(--green)}
+  .part{background:rgba(231,184,95,.16);color:var(--amber)}
+  .todo{background:rgba(107,115,144,.18);color:var(--mute)}
+  .prio{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10.5px;font-weight:700;font-family:var(--mono)}
+  .p0{background:rgba(226,109,109,.16);color:var(--red)}
+  .p1{background:rgba(91,140,255,.16);color:var(--blue)}
+  .p2{background:rgba(107,115,144,.18);color:var(--mute)}
+
+  ul.tight{margin:8px 0;padding-left:20px} ul.tight li{margin:5px 0}
+  .check li{list-style:none;margin:6px 0;padding-left:26px;position:relative}
+  .check li::before{position:absolute;left:0;top:0;font-family:var(--mono);font-size:12px}
+  .check li.d::before{content:'✓';color:var(--green)}
+  .check li.t::before{content:'▢';color:var(--faint)}
+  .check li.p::before{content:'◐';color:var(--amber)}
+
+  .alert{border-radius:10px;padding:13px 15px;margin:14px 0;font-size:13.5px;border:1px solid}
+  .alert.warn{background:rgba(231,184,95,.08);border-color:rgba(231,184,95,.35)}
+  .alert.info{background:rgba(91,140,255,.08);border-color:rgba(91,140,255,.35)}
+  .alert.good{background:rgba(70,192,138,.08);border-color:rgba(70,192,138,.35)}
+  .alert .lbl{font-weight:700;color:#fff}
+
+  /* phase card */
+  .phase{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:14px 0;overflow:hidden}
+  .phase>.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 16px;background:var(--surface2);border-bottom:1px solid var(--line)}
+  .phase>.head .n{font-weight:700;font-size:15px}
+  .phase>.body{padding:6px 16px 14px}
+  .aceite{font-size:12.5px;color:var(--mute);border-top:1px dashed var(--line);margin-top:10px;padding-top:9px}
+  .aceite b{color:var(--green)}
+  .dim{color:var(--mute)}
+  .arrow{color:var(--faint)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:10px}
+  .tag{display:inline-block;background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:var(--mono);font-size:11px;color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <a href="#design">0 · Design</a>
+  <a href="#estado">1 · Estado atual</a>
+  <a href="#backend">1.A · Backend</a>
+  <a href="#fundacao">2 · Fundação</a>
+  <a href="#fases">3 · Fases</a>
+  <a href="#esforco">Esforço</a>
+  <a href="#decisoes">Decisões</a>
+  <a href="#ordem">Ordem</a>
+</nav>
+
+<header class="top">
+  <h1>Folga Desktop — Plano de implementação <span style="color:var(--blue)">(Trilho + Foco)</span></h1>
+  <div class="sub">
+    Levar o <code>finance-web-app</code> até o design dos mockups, implementando <strong>apenas os layouts
+    Trilho e Foco</strong> (Ano fora de escopo). Reconciliado com o código real em <code>src/features/balance/**</code>
+    e com o backend <code>finance-api</code> (ver <a href="finance-api-discovery.html">discovery</a> + §1.A e Fase 0).
+    Atualizado em 2026-06-20.
+  </div>
+  <div class="legend">
+    <span>Status:</span>
+    <span><span class="st done">✓ pronto</span></span>
+    <span><span class="st part">◐ parcial</span></span>
+    <span><span class="st todo">▢ a fazer</span></span>
+    <span style="margin-left:8px">Prioridade:</span>
+    <span><span class="prio p0">P0</span></span>
+    <span><span class="prio p1">P1</span></span>
+    <span><span class="prio p2">P2</span></span>
+  </div>
+</header>
+
+<!-- ============ 0. DESIGN ============ -->
+<h2 id="design">0 · O que os mockups definem</h2>
+
+<div class="grid g2">
+  <div class="card">
+    <h3 style="margin-top:0">Cromado (todas as telas)</h3>
+    <p style="margin:0"><strong>TopBar:</strong> ● <strong>Folga · diário</strong> · nav de ano <code>‹ 📅 2026 ›</code> ·
+    à direita <strong>+ Novo</strong>, segmented <strong>Trilho / Ano / Foco</strong>, toggle de tema, engrenagem de Ajustes.</p>
+    <p style="margin:8px 0 0"><strong>Toolbar:</strong> pílulas <strong>Todas · Entradas · Saídas · Diários · Economias</strong>;
+    à direita <strong>SALDO · HOJE</strong> + badge <code>≈ 44 dias</code>, <strong>sparkline</strong> "trajetória 2026"
+    (tracejado no hoje) e <strong>PICO / VALE</strong> <code>R$ 5,4k / −R$ 1,4k</code>.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Cor do saldo = runway / gradiente</h3>
+    <p style="margin:0">Confirmado pelos números: <code>2.339,07 ÷ 44 ≈ 53,33</code> · <code>5.208,18 ÷ 98 ≈ 53,33</code>.
+    → <strong>runway = saldo ÷ diário</strong>, coluna com gradiente contínuo verde→amarelo→vermelho.</p>
+    <p style="margin:8px 0 0"><strong>Dias futuros</strong> em itálico/dessaturados (ex.: <code>R$ 53,33</code> projetado em cinza-itálico; fill mais leve).</p>
+  </div>
+</div>
+
+<div class="grid g3">
+  <div class="card"><h3 style="margin-top:0">Trilho</h3>
+    Meses lado a lado em scroll horizontal; card com header <code>● Junho /26</code> + <strong>ENTROU · SAIU · SALDO FIM</strong>;
+    colunas <strong>DIA · Entradas · Saídas · Diários · Economias · SALDO</strong>; <code>01/SEG</code>; mês atual com outline verde; setas <strong>‹ ›</strong> flutuantes.
+  </div>
+  <div class="card"><h3 style="margin-top:0">Drawer do dia</h3>
+    Clique na linha → drawer à direita (~400px) sobre overlay com blur. Header <code>‹ 05/06 ›</code> + dia-da-semana;
+    <strong>SALDO · FIM DO DIA</strong> + badge runway; 3 stats; abas; lista de lançamentos (ícone + nome + data + chip de etiqueta + valor); <strong>+ Adicionar neste dia</strong>.
+  </div>
+  <div class="card"><h3 style="margin-top:0">Foco</h3>
+    Sidebar ~272px "MESES DE 2026" (nome + saldo-fim colorido + entrou/saiu + líquido), mês atual com borda verde;
+    um mês em detalhe (densidade confortável) com <strong>linha TOTAL</strong> no rodapé.
+  </div>
+</div>
+
+<div class="card"><h3 style="margin-top:0">Editor de lançamento</h3>
+  Modal central <strong>Novo/Editar lançamento</strong> + subtítulo <code>Junho · dia 15, 2026</code>:
+  <strong>TIPO</strong> (4 categorias, selecionado com contorno na cor) · <strong>VALOR</strong> hero na cor da categoria ·
+  <strong>DESCRIÇÃO</strong> ("Onde foi parar essa grana?") · <strong>DATA</strong> + presets <strong>Hoje/Ontem/Anteontem</strong> ·
+  <strong>ETIQUETA</strong> opcional + chips <strong>Assinatura/Fixo/Bônus/Reembolso</strong> ·
+  <strong>RECORRÊNCIA</strong> Não repete/Semanal/Mensal/<strong>Anual</strong> · rodapé <strong>Cancelar · Lançar</strong> (desabilitado até valor&gt;0 e descrição).
+</div>
+
+<!-- ============ 1. ESTADO ATUAL ============ -->
+<h2 id="estado">1 · Estado atual do código (ponto de partida)</h2>
+<p class="dim">Stack real: <strong>Vite 7 + React 19 + TypeScript + TanStack Router/Query + Tailwind v4 + shadcn/ui</strong>, Bun, Biome. (Nada de Babel standalone / <code>desktop/*.js</code> do prompt original.)</p>
+<table>
+  <tr><th>Já existe</th><th>Onde</th><th>Aproveita para</th></tr>
+  <tr><td>Razão do mês (header + colunas + dias + footer)</td><td class="filecol">MonthTable · DayRow · MonthSummary</td><td>Trilho <strong>e</strong> Foco</td></tr>
+  <tr><td>Scroll horizontal de 12 meses, centraliza atual, fade, lazy</td><td class="filecol">MonthGrid · LazyMonth</td><td>Trilho</td></tr>
+  <tr><td>Cor do saldo por <strong>faixas</strong> (tier)</td><td class="filecol">lib/finance.ts#getSaldoColor</td><td>base p/ runway</td></tr>
+  <tr><td>Glyphs de categoria <code>↙ ↗ D E</code> + cores (2 temas)</td><td class="filecol">CategoryMark · --finance-category-*</td><td>tudo</td></tr>
+  <tr><td>Modais criar/editar/listar/excluir + recorrência</td><td class="filecol">AddEntryModal · EntryListModal · DeleteRecurrenceModal</td><td>base p/ editor + drawer</td></tr>
+  <tr><td>Tema claro/escuro/auto · nav de ano</td><td class="filecol">ThemeToggle · YearNav</td><td>absorver na TopBar</td></tr>
+  <tr><td>Persistência JSON + localStorage, saldo, projeção</td><td class="filecol">service/* · useFinanceYear</td><td class="dim">⚠ substituir pelo finance-api (§1.A)</td></tr>
+</table>
+<p style="margin-top:10px"><strong>Lacunas-chave:</strong> runway + dessaturação de futuro; TopBar/Toolbar completas; <strong>drawer do dia</strong> (hoje é clique-por-célula); editor com tipo/presets/etiqueta/anual; <strong>layout Foco</strong>; dia-da-semana e outline do mês atual.</p>
+
+<!-- ============ 1.A BACKEND ============ -->
+<h2 id="backend">1.A · O backend já existe: integração com <code style="font-size:.8em">finance-api</code></h2>
+<div class="alert good">
+  <span class="lbl">Conclusão:</span> o <code>finance-api</code> (Go/Postgres) <strong>já computa no servidor quase tudo que o web-app recalcula no cliente</strong>.
+  O web-app hoje é <em>local-only</em> (<code>finance.json</code> + <code>localStorage</code>); integrar = apagar essa camada e consumir a API. Discovery: <a href="finance-api-discovery.html">finance-api-discovery.html</a>.
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <h3 style="margin-top:0;color:var(--green)">O backend já entrega — não recalcular</h3>
+    <ul class="tight">
+      <li><code>GET /v1/balance?year=&month=</code> → <code>[]DayBalance</code> com <strong>saldo acumulado</strong>, <strong>carry-forward (cache)</strong> e <strong>projeção futura</strong> (<code>daily_projected</code>).</li>
+      <li>Recorrência <strong>daily/weekly/monthly/yearly</strong> + exceções + edição/exclusão por escopo <code>single|following|all</code>.</li>
+      <li>O <strong>"diário"</strong> versionado: <code>/v1/budget/preview → daily_budget.amount</code>. <strong>Runway = running_balance ÷ amount</strong> (o R$ 53,33 é exemplo).</li>
+      <li><strong>Tags</strong> como entidade (id+cor, M:N): <code>/v1/tags</code>, <code>PUT /v1/transactions/{id}/tags</code>.</li>
+      <li>Auth JWT; dinheiro <strong>int64 centavos</strong>; tipos PT-BR <strong>singular</strong>; envelope <code>{success,data}</code>.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;color:var(--red)">Remover do front — cálculo duplicado</h3>
+    <ul class="tight">
+      <li><code>lib/finance.ts</code>: <code>calcularSaldosMes</code>, <code>calcularSaldoInicialMes</code>, <code>calcularTotaisMes</code>.</li>
+      <li><code>service/financeService.ts</code>, <code>localStorageAdapter.ts</code>, <code>transactionStorage.ts</code>, <code>data/normalizeFinance.ts</code>, <code>data/finance.json</code>.</li>
+      <li><code>useTransactions.buildOccurrences</code> e <code>removeTransactionsFromSeries</code>.</li>
+      <li><code>useOnboarding</code> (diário ÷30) → <code>register</code>/<code>budget</code>.</li>
+    </ul>
+    <p style="margin:8px 0 0" class="dim"><strong>Fica no front:</strong> <code>saldoColour</code>, sparkline, pico/vale, <code>formatBRL</code>, weekday, e toda a UI.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Lacunas & contratos a alinhar</h3>
+  <div class="grid g2">
+    <ul class="tight" style="margin:0">
+      <li><strong>Balance é mensal</strong> → 12 meses = 12× <code>GET /balance</code> em paralelo (cache por mês). Recomendado.</li>
+      <li><strong>Web-app não tem auth</strong> → client HTTP + token + telas de login/registro/onboarding. Maior peça nova.</li>
+    </ul>
+    <ul class="tight" style="margin:0">
+      <li><strong>Tags entidade vs string</strong>: chips viram tags reais via <code>/v1/tags</code>.</li>
+      <li>Alinhar <strong>plural↔singular</strong>, <strong>centavos</strong> (há <code>toCents/fromCents</code>), desempacotar <code>.data</code>, datas <code>YYYY-MM-DD</code>.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="alert warn">
+  <span class="lbl">★ Decisão de arquitetura (precisa do seu ok):</span> integrar troca a fundação de <em>local-only</em> para <strong>cliente autenticado</strong>.
+  <strong>(1) Cutover total</strong> · <strong>(2) Incremental</strong> <span class="dim">(camada de serviço com flag, troca hook a hook, fallback local — recomendado, começando por <code>useFinanceYear → /v1/balance</code>)</span> · <strong>(3) Adiar</strong> (segue local-only). Detalhado na <a href="#fases">Fase 0</a>.
+</div>
+
+<!-- ============ 2. FUNDAÇÃO ============ -->
+<h2 id="fundacao">2 · Mudanças de fundação</h2>
+<p class="dim">§2.1 (runway) e §2.3 (preferências) valem em qualquer cenário. §2.2 (tipos/seed/recorrência local) <strong>só se ficar local-only</strong>; sob integração é substituído pelo backend.</p>
+
+<div class="card">
+  <h3 style="margin-top:0"><span class="st todo">▢</span> <span class="prio p0">P0</span>&nbsp; 2.1 · <code>lib/finance.ts</code> — modo runway</h3>
+  <ul class="tight">
+    <li><code>runwayDias(saldo, diario) = saldo / diario</code> — <strong>diario vem do backend</strong> (<code>daily_budget.amount</code>); local-only usa o do onboarding.</li>
+    <li><code>saldoColour(saldo, {mode, dark, future}) → {fill, ink}</code>: <code>mode:'runway'|'tier'</code>, <strong>runway é padrão</strong>.
+      <span class="dim">Gradiente RGB de 5 stops (<code>≤−10 → 0 → 10 → 22 → ≥40 dias</code>), espelhado p/ dark; <code>future</code> dessatura fill ~42% e ink ~30%.</span></li>
+    <li>Manter <code>getSaldoColor</code> como adaptador do modo <code>tier</code>; migrar <code>DayRow</code> para <code>saldoColour</code>.</li>
+    <li>Helpers p/ Toolbar/Foco: <code>saldoFimMes</code>, <code>picoVale</code>, <code>serieSaldoAno</code>.</li>
+  </ul>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <h3 style="margin-top:0"><span class="st todo">▢</span>&nbsp; 2.2 · Tipos e dados <span class="dim">(só local-only)</span></h3>
+    <ul class="tight">
+      <li><code>types/transaction.ts</code>: <code>tag?: string</code>; recorrência ganha <code>yearly</code>.</li>
+      <li><code>buildOccurrences</code> trata <code>yearly</code> + "Termina em" (opcional).</li>
+      <li>Seed de demo no <code>finance.json</code> (Salário/Aluguel/...); remover <code>cartao</code> órfão.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0"><span class="st todo">▢</span>&nbsp; 2.3 · Preferências</h3>
+    <ul class="tight">
+      <li>Persistir <code>finance_pref_layout</code>, <code>finance_pref_density</code>, <code>finance_pref_saldo_mode</code>.</li>
+      <li>Default <code>layout='trilho'</code>, <code>saldo_mode='runway'</code>.</li>
+      <li>Trilho compacto · Foco confortável.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 3. FASES ============ -->
+<h2 id="fases">3 · Fases</h2>
+
+<div class="phase">
+  <div class="head"><span class="st todo">▢</span><span class="n">Fase 0 — Integração com <code>finance-api</code></span><span class="prio p0">decisão + base</span></div>
+  <div class="body">
+    <p class="dim" style="margin:8px 0">Só se a escolha for (1) Cutover ou (2) Incremental. Se (3) Adiar, pular para a Fase 1 mantendo a fundação local.</p>
+    <ul class="check">
+      <li class="t"><strong>Decidir</strong> o caminho (1/2/3).</li>
+      <li class="t"><strong>Client HTTP</strong> (<code>lib/api.ts</code>): base URL, JWT, desempacotar <code>{success,data}</code>, erros; helpers <code>centavos↔reais</code> e <code>tipo plural↔singular</code>.</li>
+      <li class="t"><strong>Auth</strong>: storage do token, telas de login/registro, guarda de rota; onboarding via <code>register</code>.</li>
+      <li class="t"><strong><code>useFinanceYear → /v1/balance</code></strong>: 12× em paralelo (cache por mês); montar o ano dos <code>DayBalance</code>. Remove <code>financeService</code>/<code>normalizeFinance</code>/<code>finance.json</code> + cálculos de saldo.</li>
+      <li class="t"><strong>Transações → API</strong>: <code>POST/PATCH/DELETE /v1/transactions</code> com scope; remove <code>transactionStorage</code>/<code>buildOccurrences</code>; invalida <code>['balance',…]</code>.</li>
+      <li class="t"><strong>Diário/tags</strong>: runway usa <code>daily_budget.amount</code>; etiquetas via <code>/v1/tags</code>.</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> ano renderiza da API com login real; criar/editar/excluir (recorrente por escopo) reflete no saldo; nenhuma leitura de <code>finance.json</code>/<code>localStorage</code> financeiro permanece.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st part">◐</span><span class="n">Fase 1 — Cromado: TopBar + Toolbar</span><span class="prio p0">P0</span></div>
+  <div class="body">
+    <ul class="check">
+      <li class="t"><strong>TopBar</strong>: marca; nav de ano (absorver <code>YearNav</code>); <strong>+ Novo</strong>; <strong>LayoutSegmented</strong> (Trilho/Foco; Ano desabilitado); toggle de tema (mover <code>ThemeToggle</code>); <strong>Ajustes</strong> → popover (Cor do saldo + nota do runway).</li>
+      <li class="t"><strong>Toolbar</strong>: <code>CategoryFilter</code> (Todas + 4); <code>FocoSaldo</code> (SALDO·HOJE + <code>≈ N dias</code>); <code>Sparkline</code> (tracejado no hoje); <code>PicoVale</code>.</li>
+      <li class="t">Filtro de categoria <strong>apaga</strong> colunas fora do filtro; trocar de ano limpa seleção de dia.</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> filtros, tema, ano, segmented e Ajustes funcionam e persistem; sparkline marca o hoje; pico/vale corretos.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st part">◐</span><span class="n">Fase 2 — Razão do mês: refinos p/ o design</span><span class="prio p0">P0/P1</span></div>
+  <div class="body">
+    <p class="dim" style="margin:8px 0">Sobre <code>MonthTable</code>/<code>DayRow</code>/<code>MonthSummary</code> (compartilhados por Trilho e Foco).</p>
+    <ul class="check">
+      <li class="t"><strong>Dia + dia-da-semana</strong> (<code>01</code> grande + <code>SEG</code> pequeno).</li>
+      <li class="t">Saldo via <strong><code>saldoColour</code> (runway)</strong>; <strong>futuros itálico + dessaturados</strong>.</li>
+      <li class="t"><strong>Header do mês</strong> com <strong>ENTROU · SAIU · SALDO FIM</strong> + ● marcador.</li>
+      <li class="t"><strong>Linha de hoje</strong> (fundo <code>todayBg</code> + barra verde à esquerda).</li>
+      <li class="p"><strong>Densidade</strong> via custom props (Trilho compacto, Foco confortável).</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> mês correto nos 2 temas; coluna de saldo conta a história de cor; futuro visivelmente mais leve.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st done">✓◐</span><span class="n">Fase 3 — Layout Trilho</span><span class="prio p1">P1</span></div>
+  <div class="body">
+    <ul class="check">
+      <li class="d">scroll horizontal, centraliza mês atual, fade de borda, lazy.</li>
+      <li class="t"><strong>Setas ‹ › flutuantes</strong> fora do scroll, avançam ~2 meses.</li>
+      <li class="t"><strong>Header de mês sticky</strong> ao rolar verticalmente.</li>
+      <li class="t"><strong>Outline verde no mês atual</strong>; clique na <code>DayRow</code> <strong>abre o drawer</strong> (Fase 4).</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> rola suave; mês atual destacado; header gruda; clique abre drawer.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st todo">▢</span><span class="n">Fase 4 — Drawer do dia</span><span class="prio p0">P0</span><span class="tag">substitui modais por célula</span></div>
+  <div class="body">
+    <ul class="check">
+      <li class="t">Header <code>‹ data ›</code> + dia-da-semana + ✕; <code>‹ ›</code> navegam dia a dia; <code>Esc</code>/overlay fecham.</li>
+      <li class="t"><strong>SALDO · FIM DO DIA</strong> + badge runway; 3 stats <strong>ENTRADAS · SAÍDAS · LÍQUIDO</strong>.</li>
+      <li class="t"><strong>Abas</strong> + <strong>lista de lançamentos</strong> (ícone, nome, data, chip de etiqueta, valor +/−); editar/excluir reusa <code>useTransactions</code>.</li>
+      <li class="t">Rodapé <strong>+ Adicionar neste dia</strong>; totais recalculam ao mudar.</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> abre/fecha com transição; navegação e abas funcionam; totais refletem mudanças; clique-por-célula removido do <code>DayRow</code>.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st todo">▢◐</span><span class="n">Fase 5 — Editor de lançamento</span><span class="prio p1">P1</span></div>
+  <div class="body">
+    <ul class="check">
+      <li class="t"><strong>TIPO</strong> (4 categorias, contorno na cor); <strong>VALOR</strong> hero na cor da categoria.</li>
+      <li class="p"><strong>DESCRIÇÃO</strong> (placeholder "Onde foi parar essa grana?").</li>
+      <li class="t"><strong>DATA</strong> <code>DD/MM/AAAA</code> + presets <strong>Hoje/Ontem/Anteontem</strong>.</li>
+      <li class="t"><strong>ETIQUETA</strong> opcional + chips Assinatura/Fixo/Bônus/Reembolso.</li>
+      <li class="t"><strong>RECORRÊNCIA</strong> + <strong>Anual</strong>; <strong>validação</strong> (valor&gt;0 e descrição); Excluir só em edição.</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> criar/editar/excluir reflete no drawer e nas somas do dia; validação do botão funciona.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st todo">▢</span><span class="n">Fase 6 — Layout Foco</span><span class="prio p1">P1</span></div>
+  <div class="body">
+    <ul class="check">
+      <li class="t"><strong>MonthSidebar ~272px</strong>: 12 meses (nome + saldo-fim colorido + entrou/saiu + líquido); mês atual com borda verde + ●; clique troca o detalhe.</li>
+      <li class="t"><strong>Detalhe</strong>: <code>MonthTable</code> em <strong>densidade confortável</strong> + <strong>linha TOTAL</strong> (estender <code>MonthSummary</code> com SALDO FIM).</li>
+      <li class="t">Clique na <code>DayRow</code> abre o mesmo <strong>drawer</strong> (Fase 4).</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> sidebar lista os 12 meses com resumo correto; clicar troca o painel; mês atual destacado; drawer abre.</div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="head"><span class="st todo">▢◐</span><span class="n">Fase 7 — Polimento</span><span class="prio p2">P2</span></div>
+  <div class="body">
+    <ul class="check">
+      <li class="t"><code>prefers-reduced-motion</code>; scrollbars estilizadas; transições de tema ~0,2s; foco de teclado; contraste fill×ink (runway) nos 2 temas.</li>
+      <li class="t">Testes Vitest: <code>lib/finance.ts</code> (runway, pico/vale) e fluxo de transações (escopo/recorrência).</li>
+    </ul>
+    <div class="aceite"><b>Aceite:</b> sem regressões; teclado utilizável; nada "pisca" ao trocar tema/ano/layout/mês.</div>
+  </div>
+</div>
+
+<!-- ============ ESFORÇO ============ -->
+<h2 id="esforco">Resumo de esforço (por prioridade)</h2>
+<table>
+  <tr><th>Prio</th><th>Bloco</th><th>Fase</th><th>Tam.</th></tr>
+  <tr><td><span class="prio p0">P0</span></td><td>Integração API + auth (se (1)/(2))</td><td>0</td><td>G</td></tr>
+  <tr><td><span class="prio p0">P0</span></td><td><code>saldoColour</code> runway + dessaturação de futuro</td><td>2.1 / 2</td><td>M</td></tr>
+  <tr><td><span class="prio p0">P0</span></td><td>Toolbar (filtros, sparkline, foco, pico/vale) + TopBar</td><td>1</td><td>G</td></tr>
+  <tr><td><span class="prio p1">P1</span></td><td>Drawer do dia + editor (tipo/presets/etiqueta/anual)</td><td>4 / 5</td><td>G</td></tr>
+  <tr><td><span class="prio p1">P1</span></td><td>Layouts Trilho e Foco (densidade)</td><td>3 / 6</td><td>M</td></tr>
+  <tr><td><span class="prio p2">P2</span></td><td>Refinos do razão · polimento · testes</td><td>2 / 7</td><td>P–M</td></tr>
+</table>
+
+<!-- ============ DECISÕES ============ -->
+<h2 id="decisoes">Decisões em aberto</h2>
+<div class="grid g2">
+  <div class="alert warn" style="margin:0"><span class="lbl">1 · Caminho de integração</span><br>Cutover total · <strong>Incremental (recomendado)</strong> · Adiar. Define se a Fase 0 entra agora.</div>
+  <div class="alert info" style="margin:0"><span class="lbl">2 · Filtro de categoria</span><br>Nos mockups parece <strong>seleção única</strong> com "Todas" (não multi). Confirmar na Fase 1.</div>
+  <div class="alert info" style="margin:0"><span class="lbl">3 · Etiquetas</span><br>Sob integração viram <strong>tags-entidade</strong> (<code>/v1/tags</code>); local-only seriam <code>string</code>.</div>
+  <div class="alert info" style="margin:0"><span class="lbl">4 · Balance anual</span><br>12× mensal em paralelo (agora) vs pedir <code>GET /balance?year=</code> ao backend (follow-up).</div>
+</div>
+
+<!-- ============ ORDEM ============ -->
+<h2 id="ordem">Ordem de execução sugerida</h2>
+<div class="card">
+  <ol class="tight" style="margin:0">
+    <li><strong>Decidir a integração</strong> (§1.A) e, se (1)/(2), fazer a <strong>Fase 0</strong> — troca a fonte de dados antes de investir na UI.</li>
+    <li><strong>Fundação</strong> (§2): runway em <code>saldoColour</code> + preferências.</li>
+    <li><strong>Fase 2</strong> (razão refinado) — destrava Trilho e Foco juntos.</li>
+    <li><strong>Fase 4</strong> (drawer) + <strong>Fase 5</strong> (editor) — o modelo de interação novo.</li>
+    <li><strong>Fase 1</strong> (TopBar/Toolbar) — cromado e segmented.</li>
+    <li><strong>Fase 3</strong> (Trilho) e <strong>Fase 6</strong> (Foco).</li>
+    <li><strong>Fase 7</strong> (polimento + testes).</li>
+  </ol>
+  <p style="margin:12px 0 0" class="dim">Por que a Fase 0 primeiro: saldo, projeção e recorrência mudam de "calculado no front" para "vindo da API". Construir drawer/editor sobre o <code>localStorage</code> e refazer depois seria retrabalho. Parar e mostrar ao fim de cada fase; <code>bun run check</code> limpo antes de fechar. <strong>Ano fora de escopo.</strong></p>
+</div>
+
+<p class="dim" style="font-size:12px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px">
+  Fonte em markdown: <code>docs/folga-desktop-plan.md</code> · Discovery do backend: <a href="finance-api-discovery.html">docs/finance-api-discovery.html</a>.
+</p>
+
+</div>
+</body>
+</html>
