@@ -8,7 +8,7 @@ const SALDO_MODE_KEY = "finance_pref_saldo_mode";
 const DEFAULT_PREFERENCES: BalancePreferences = {
 	layout: "trilho",
 	density: "confortavel",
-	saldoMode: "runway",
+	saldoMode: "tier",
 };
 
 function readPreferences(): BalancePreferences {
@@ -21,7 +21,7 @@ function readPreferences(): BalancePreferences {
 	return {
 		layout: layout === "foco" ? "foco" : "trilho",
 		density: density === "compacto" ? "compacto" : "confortavel",
-		saldoMode: saldoMode === "tier" ? "tier" : "runway",
+		saldoMode: saldoMode === "runway" ? "runway" : "tier",
 	};
 }
 

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import {
 	Table,
 	TableBody,
@@ -16,7 +16,11 @@ import {
 import { cn } from "#/lib/utils";
 import { useTransactions } from "../hooks/useTransactions";
 import type { DayEntry, FinanceYear } from "../types/models";
-import type { BalanceDensity, CategoryFilter } from "../types/preferences";
+import type {
+	BalanceDensity,
+	CategoryFilter,
+	SaldoMode,
+} from "../types/preferences";
 import type { TransactionCategory } from "../types/transaction";
 import { CategoryMark } from "./CategoryMark";
 import { DayRow } from "./DayRow";
@@ -29,6 +33,7 @@ interface MonthTableProps {
 	saldoInicialMes: number;
 	categoryFilter: CategoryFilter;
 	density: BalanceDensity;
+	saldoMode: SaldoMode;
 }
 
 const CATEGORIES: Array<{ key: TransactionCategory; label: string }> = [
@@ -45,6 +50,7 @@ export function MonthTable({
 	saldoInicialMes,
 	categoryFilter,
 	density,
+	saldoMode,
 }: MonthTableProps) {
 	const {
 		addTransaction: addTx,
@@ -71,6 +77,20 @@ export function MonthTable({
 	}, [days, saldoInicialMes, daysInMonth]);
 
 	const totals = useMemo(() => calcularTotaisMes(days), [days]);
+	const saldoFim = saldos[daysInMonth] ?? saldoInicialMes;
+	const dailyBudget = useMemo(() => {
+		const entries = Object.values(days);
+		return (
+			entries.find((entry) => (entry.diarioProjetado ?? 0) > 0)
+				?.diarioProjetado ??
+			entries.find((entry) => entry.diario > 0)?.diario ??
+			0
+		);
+	}, [days]);
+	const isCurrentMonth = (() => {
+		const now = new Date();
+		return year === now.getFullYear() && month === now.getMonth() + 1;
+	})();
 
 	const isEmptyMonth = useMemo(() => {
 		const now = new Date();
@@ -105,14 +125,21 @@ export function MonthTable({
 
 	return (
 		<div
+			style={
+				{
+					"--balance-row-py": density === "compacto" ? "0.125rem" : "0.375rem",
+					"--balance-day-size": density === "compacto" ? "0.8rem" : "0.95rem",
+				} as CSSProperties
+			}
 			className={cn(
-				"shrink-0 overflow-hidden rounded-lg border border-border bg-card",
+				"shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm",
+				isCurrentMonth && "border-emerald-500/70 shadow-emerald-500/10",
 				categoryFilter === "todas" ? "min-w-90" : "min-w-64",
 			)}
 		>
 			<h2
 				className={cn(
-					"border-b border-border bg-muted/40 px-3 py-2 text-sm font-medium",
+					"border-b border-border bg-muted/40 px-3 py-2.5 text-sm font-medium",
 					isEmptyMonth && "cursor-pointer select-none",
 				)}
 				onClick={isEmptyMonth ? () => setCollapsed((c) => !c) : undefined}
@@ -129,16 +156,24 @@ export function MonthTable({
 				role={isEmptyMonth ? "button" : undefined}
 				tabIndex={isEmptyMonth ? 0 : undefined}
 			>
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-2">
 					{isEmptyMonth &&
 						(collapsed ? (
 							<ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
 						) : (
 							<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
 						))}
-					{monthName}/{year}
+					<span className="text-emerald-500">●</span>
+					<span className="mr-auto">
+						{monthName}/{String(year).slice(-2)}
+					</span>
+					<span className="hidden items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest sm:flex">
+						<span>Entrou {formatBRL(totals.entradas)}</span>
+						<span>Saiu {formatBRL(totals.saidas)}</span>
+						<span>Saldo fim {formatBRL(saldoFim)}</span>
+					</span>
 					{isEmptyMonth && (
-						<span className="ml-auto text-xs font-normal text-muted-foreground">
+						<span className="text-xs font-normal text-muted-foreground">
 							Sem lançamentos
 						</span>
 					)}
@@ -191,6 +226,8 @@ export function MonthTable({
 									entry={entry}
 									saldo={saldo}
 									saldoInicial={financeYear.saldoInicial}
+									dailyBudget={dailyBudget}
+									saldoMode={saldoMode}
 									categoryFilter={categoryFilter}
 									onAddTransaction={addTx}
 									onDeleteTransaction={deleteTx}
@@ -199,7 +236,11 @@ export function MonthTable({
 							);
 						})}
 					</TableBody>
-					<MonthSummary totals={totals} />
+					<MonthSummary
+						totals={totals}
+						categoryFilter={categoryFilter}
+						saldoFim={saldoFim}
+					/>
 				</Table>
 			)}
 		</div>

@@ -1,10 +1,17 @@
 import * as React from "react";
 import { Suspense, useCallback, useState } from "react";
 import { TableCell, TableRow } from "#/components/ui/table";
-import { formatBRL, getNomeMes, getSaldoColor, isToday } from "#/lib/finance";
+import {
+	formatBRL,
+	formatWeekday,
+	getNomeMes,
+	isFutureDate,
+	isToday,
+	saldoColour,
+} from "#/lib/finance";
 import { cn } from "#/lib/utils";
-import type { DayEntry, SaldoColor } from "../types/models";
-import type { CategoryFilter } from "../types/preferences";
+import type { DayEntry } from "../types/models";
+import type { CategoryFilter, SaldoMode } from "../types/preferences";
 import type {
 	Transaction,
 	TransactionCategory,
@@ -27,6 +34,8 @@ interface DayRowProps {
 	entry: DayEntry;
 	saldo: number;
 	saldoInicial: number;
+	dailyBudget: number;
+	saldoMode: SaldoMode;
 	categoryFilter: CategoryFilter;
 	onAddTransaction: (params: {
 		year: number;
@@ -77,15 +86,7 @@ const CATEGORY_FIELD_LABELS: Record<TransactionCategory, string> = {
 	economias: "Economias",
 };
 
-const SALDO_CELL_CLASSES: Record<SaldoColor, string> = {
-	"dark-green": "finance-saldo-dark-green",
-	"light-green": "finance-saldo-light-green",
-	yellow: "finance-saldo-yellow",
-	"light-red": "finance-saldo-light-red",
-	"dark-red": "finance-saldo-dark-red",
-};
-
-const SALDO_COLOR_LABELS: Record<SaldoColor, string> = {
+const SALDO_COLOR_LABELS = {
 	"dark-green": "Saldo muito positivo",
 	"light-green": "Saldo positivo",
 	yellow: "Saldo baixo",
@@ -100,6 +101,8 @@ const DayRow = React.memo(function DayRow({
 	entry,
 	saldo,
 	saldoInicial,
+	dailyBudget,
+	saldoMode,
 	categoryFilter,
 	onAddTransaction,
 	onDeleteTransaction,
@@ -110,10 +113,17 @@ const DayRow = React.memo(function DayRow({
 		useState<Transaction | null>(null);
 
 	const dayIsToday = isToday(year, month, day);
+	const dayIsFuture = isFutureDate(year, month, day);
 	const dayOfWeek = new Date(year, month - 1, day).getDay();
 	const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-	const saldoColor: SaldoColor = getSaldoColor(saldo, saldoInicial);
+	const saldoColor = saldoColour(saldo, {
+		mode: saldoMode,
+		diario: dailyBudget,
+		saldoInicial,
+		future: dayIsFuture,
+	});
 	const monthName = getNomeMes(month);
+	const weekday = formatWeekday(year, month, day);
 
 	const makeAriaLabel = useCallback(
 		(field: string) => `${field} do dia ${day} de ${monthName}`,
@@ -232,10 +242,15 @@ const DayRow = React.memo(function DayRow({
 		setPendingRecurringDelete(null);
 	}, [pendingRecurringDelete, applyDelete]);
 
-	const rowClass = dayIsToday ? "bg-primary/5 font-semibold" : "";
+	const rowClass = cn(
+		"group relative transition-colors",
+		dayIsToday && "bg-emerald-500/8 font-semibold",
+		dayIsFuture && "text-muted-foreground",
+	);
 	const dayCellClass = cn(
-		"w-10 text-center text-xs font-medium",
-		dayIsToday ? "bg-muted/50" : "",
+		"relative w-10 text-center font-medium",
+		"py-[var(--balance-row-py)]",
+		dayIsToday ? "bg-emerald-500/10" : "",
 		isWeekend && !dayIsToday && "bg-muted/35",
 	);
 
@@ -248,14 +263,32 @@ const DayRow = React.memo(function DayRow({
 	const visibleCategories = CATEGORIES.filter(
 		(category) => categoryFilter === "todas" || categoryFilter === category,
 	);
-	const saldoLabel = `${formatBRL(saldo)} — ${SALDO_COLOR_LABELS[saldoColor]}`;
+	const saldoLabel = `${formatBRL(saldo)} — ${SALDO_COLOR_LABELS[saldoColor.tier]}`;
 
 	return (
 		<>
 			<TableRow className={rowClass}>
-				<TableCell className={dayCellClass}>{day}</TableCell>
+				<TableCell className={dayCellClass}>
+					{dayIsToday && (
+						<span className="absolute top-0 bottom-0 left-0 w-1 rounded-r-full bg-emerald-500" />
+					)}
+					<span className="flex flex-col items-center leading-none">
+						<span className="font-mono font-bold text-[length:var(--balance-day-size)] tabular-nums">
+							{String(day).padStart(2, "0")}
+						</span>
+						<span className="mt-0.5 text-[9px] font-bold text-muted-foreground tracking-wider">
+							{weekday}
+						</span>
+					</span>
+				</TableCell>
 				{visibleCategories.map((cat) => (
-					<TableCell key={cat} className="w-28 text-right">
+					<TableCell
+						key={cat}
+						className={cn(
+							"w-28 py-[var(--balance-row-py)] text-right",
+							dayIsFuture && cat === "diario" && "opacity-70",
+						)}
+					>
 						<ClickableCell
 							category={cat}
 							value={values[cat]}
@@ -267,9 +300,12 @@ const DayRow = React.memo(function DayRow({
 				))}
 				<TableCell
 					aria-label={saldoLabel}
+					style={{
+						backgroundColor: saldoColor.fill,
+						color: saldoColor.ink,
+					}}
 					className={cn(
-						"w-28 text-right text-xs font-semibold tabular-nums transition-colors duration-200 ease-out",
-						SALDO_CELL_CLASSES[saldoColor],
+						"w-28 py-[var(--balance-row-py)] text-right text-xs font-semibold tabular-nums transition-colors duration-200 ease-out",
 					)}
 				>
 					{formatBRL(saldo)}

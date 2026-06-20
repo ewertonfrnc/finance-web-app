@@ -3,7 +3,11 @@ import { Skeleton } from "#/components/ui/skeleton";
 import { cn } from "#/lib/utils";
 import { useFinanceYear } from "../hooks/useFinanceYear";
 import type { DayEntry } from "../types/models";
-import type { BalanceDensity, CategoryFilter } from "../types/preferences";
+import type {
+	BalanceDensity,
+	CategoryFilter,
+	SaldoMode,
+} from "../types/preferences";
 import { LazyMonth } from "./LazyMonth";
 import { MonthTable } from "./MonthTable";
 
@@ -11,6 +15,7 @@ interface MonthGridProps {
 	year: number;
 	categoryFilter: CategoryFilter;
 	density: BalanceDensity;
+	saldoMode: SaldoMode;
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -20,7 +25,12 @@ function getSaldoInicialFromFirstDay(day: DayEntry | undefined): number {
 	return day.saldo - day.entradas + day.saidas + day.diario + day.economias;
 }
 
-export function MonthGrid({ year, categoryFilter, density }: MonthGridProps) {
+export function MonthGrid({
+	year,
+	categoryFilter,
+	density,
+	saldoMode,
+}: MonthGridProps) {
 	const { data: financeYear, isLoading, isError } = useFinanceYear(year);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const monthRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -128,6 +138,7 @@ export function MonthGrid({ year, categoryFilter, density }: MonthGridProps) {
 							saldoInicialMes={saldosIniciaisMes[m] ?? 0}
 							categoryFilter={categoryFilter}
 							density={density}
+							saldoMode={saldoMode}
 						/>
 					);
 

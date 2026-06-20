@@ -2,6 +2,7 @@ export interface DayEntry {
 	entradas: number;
 	saidas: number;
 	diario: number;
+	diarioProjetado?: number;
 	economias: number;
 	saldo?: number;
 }

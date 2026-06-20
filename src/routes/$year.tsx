@@ -50,6 +50,7 @@ function YearPage() {
 					year={year}
 					categoryFilter={categoryFilter}
 					density={preferences.density}
+					saldoMode={preferences.saldoMode}
 				/>
 			</div>
 		</main>
