@@ -88,18 +88,20 @@ export async function listTransactions(params: {
 	year: number;
 	month: number;
 	day: number;
-	category: TransactionCategory;
+	category?: TransactionCategory;
 }): Promise<Transaction[]> {
+	const queryParams: Record<string, string | number> = {
+		year: params.year,
+		month: params.month,
+		day: params.day,
+	};
+	if (params.category) {
+		queryParams.type = TYPE_BY_CATEGORY[params.category];
+	}
+
 	const response = await apiClient.get<ApiResponse<ApiTransaction[]>>(
 		"/v1/transactions",
-		{
-			params: {
-				year: params.year,
-				month: params.month,
-				day: params.day,
-				type: TYPE_BY_CATEGORY[params.category],
-			},
-		},
+		{ params: queryParams },
 	);
 
 	return unwrapApiData(response.data).map(mapApiTransaction);

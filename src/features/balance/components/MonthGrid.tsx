@@ -2,14 +2,17 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Skeleton } from "#/components/ui/skeleton";
+import { getDiasNoMes } from "#/lib/finance";
 import { cn } from "#/lib/utils";
 import { useFinanceYear } from "../hooks/useFinanceYear";
+import { useTransactions } from "../hooks/useTransactions";
 import type { DayEntry } from "../types/models";
 import type {
 	BalanceDensity,
 	CategoryFilter,
 	SaldoMode,
 } from "../types/preferences";
+import { DayDrawer } from "./DayDrawer";
 import { LazyMonth } from "./LazyMonth";
 import { MonthTable } from "./MonthTable";
 
@@ -21,6 +24,18 @@ interface MonthGridProps {
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+const EMPTY_DAY: DayEntry = {
+	entradas: 0,
+	saidas: 0,
+	diario: 0,
+	economias: 0,
+};
+
+interface SelectedDay {
+	year: number;
+	month: number;
+	day: number;
+}
 
 function getSaldoInicialFromFirstDay(day: DayEntry | undefined): number {
 	if (!day || day.saldo === undefined) return 0;
@@ -34,9 +49,19 @@ export function MonthGrid({
 	saldoMode,
 }: MonthGridProps) {
 	const { data: financeYear, isLoading, isError } = useFinanceYear(year);
+	const {
+		addTransaction: addTx,
+		deleteTransaction: deleteTx,
+		getTransactions,
+	} = useTransactions(year);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const monthRefs = useRef<Record<number, HTMLDivElement | null>>({});
 	const focusedYearRef = useRef<number | null>(null);
+	const closeDrawerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
+	const [selectedDay, setSelectedDay] = useState<SelectedDay | null>(null);
+	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
 	const saldosIniciaisMes = useMemo(() => {
 		if (!financeYear) return {};
@@ -82,6 +107,20 @@ export function MonthGrid({
 		scrollToMonth(targetMonth, "auto");
 		focusedYearRef.current = year;
 	}, [year, targetMonth, financeYear, scrollToMonth]);
+
+	useEffect(() => {
+		if (!selectedDay || selectedDay.year === year) return;
+		setIsDrawerOpen(false);
+		setSelectedDay(null);
+	}, [selectedDay, year]);
+
+	useEffect(() => {
+		return () => {
+			if (closeDrawerTimeoutRef.current) {
+				clearTimeout(closeDrawerTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const [canScrollLeft, setCanScrollLeft] = useState(false);
 	const [canScrollRight, setCanScrollRight] = useState(false);
@@ -133,6 +172,54 @@ export function MonthGrid({
 		const frame = requestAnimationFrame(updateScrollIndicators);
 		return () => cancelAnimationFrame(frame);
 	}, [financeYear, updateScrollIndicators]);
+
+	const selectedMonthDays = selectedDay
+		? (financeYear?.months[selectedDay.month]?.days ?? {})
+		: {};
+	const selectedEntry = selectedDay
+		? (selectedMonthDays[selectedDay.day] ?? EMPTY_DAY)
+		: null;
+	const selectedSaldo = selectedDay
+		? (selectedMonthDays[selectedDay.day]?.saldo ??
+			saldosIniciaisMes[selectedDay.month] ??
+			0)
+		: 0;
+	const selectedDailyBudget = useMemo(() => {
+		if (!selectedDay || !financeYear) return 0;
+		const days = financeYear.months[selectedDay.month]?.days ?? {};
+		const entries = Object.values(days);
+		return (
+			entries.find((entry) => (entry.diarioProjetado ?? 0) > 0)
+				?.diarioProjetado ??
+			entries.find((entry) => entry.diario > 0)?.diario ??
+			0
+		);
+	}, [financeYear, selectedDay]);
+
+	const handleSelectDay = useCallback((day: SelectedDay) => {
+		if (closeDrawerTimeoutRef.current) {
+			clearTimeout(closeDrawerTimeoutRef.current);
+			closeDrawerTimeoutRef.current = null;
+		}
+		const daysInMonth = getDiasNoMes(day.year, day.month);
+		setSelectedDay({
+			year: day.year,
+			month: day.month,
+			day: Math.min(daysInMonth, Math.max(1, day.day)),
+		});
+		setIsDrawerOpen(true);
+	}, []);
+
+	const handleCloseDrawer = useCallback(() => {
+		if (closeDrawerTimeoutRef.current) {
+			clearTimeout(closeDrawerTimeoutRef.current);
+		}
+		setIsDrawerOpen(false);
+		closeDrawerTimeoutRef.current = setTimeout(() => {
+			setSelectedDay(null);
+			closeDrawerTimeoutRef.current = null;
+		}, 200);
+	}, []);
 
 	if (isLoading) {
 		return (
@@ -202,6 +289,7 @@ export function MonthGrid({
 							categoryFilter={categoryFilter}
 							density={density}
 							saldoMode={saldoMode}
+							onSelectDay={handleSelectDay}
 						/>
 					);
 
@@ -225,6 +313,18 @@ export function MonthGrid({
 					);
 				})}
 			</div>
+			<DayDrawer
+				open={isDrawerOpen}
+				selectedDay={selectedDay}
+				entry={selectedEntry}
+				saldo={selectedSaldo}
+				dailyBudget={selectedDailyBudget}
+				onClose={handleCloseDrawer}
+				onNavigate={handleSelectDay}
+				onAddTransaction={addTx}
+				onDeleteTransaction={deleteTx}
+				onGetTransactions={getTransactions}
+			/>
 		</div>
 	);
 }

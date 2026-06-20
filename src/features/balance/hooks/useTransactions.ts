@@ -43,7 +43,7 @@ export function useTransactions(_year: number) {
 			year: number,
 			month: number,
 			day: number,
-			category: TransactionCategory,
+			category?: TransactionCategory,
 		) => {
 			try {
 				return await listTransactions({ year, month, day, category });

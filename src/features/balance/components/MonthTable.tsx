@@ -14,7 +14,6 @@ import {
 	getNomeMes,
 } from "#/lib/finance";
 import { cn } from "#/lib/utils";
-import { useTransactions } from "../hooks/useTransactions";
 import type { DayEntry, FinanceYear } from "../types/models";
 import type {
 	BalanceDensity,
@@ -34,6 +33,7 @@ interface MonthTableProps {
 	categoryFilter: CategoryFilter;
 	density: BalanceDensity;
 	saldoMode: SaldoMode;
+	onSelectDay: (day: { year: number; month: number; day: number }) => void;
 }
 
 const CATEGORIES: Array<{ key: TransactionCategory; label: string }> = [
@@ -51,13 +51,8 @@ export function MonthTable({
 	categoryFilter,
 	density,
 	saldoMode,
+	onSelectDay,
 }: MonthTableProps) {
-	const {
-		addTransaction: addTx,
-		deleteTransaction: deleteTx,
-		getTransactions,
-	} = useTransactions(year);
-
 	const monthData = financeYear.months[month];
 	const daysInMonth = getDiasNoMes(year, month);
 	const monthName = getNomeMes(month);
@@ -230,9 +225,7 @@ export function MonthTable({
 									dailyBudget={dailyBudget}
 									saldoMode={saldoMode}
 									categoryFilter={categoryFilter}
-									onAddTransaction={addTx}
-									onDeleteTransaction={deleteTx}
-									onGetTransactions={getTransactions}
+									onSelectDay={() => onSelectDay({ year, month, day })}
 								/>
 							);
 						})}

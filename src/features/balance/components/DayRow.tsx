@@ -1,10 +1,9 @@
 import * as React from "react";
-import { Suspense, useCallback, useState } from "react";
+import { useCallback } from "react";
 import { TableCell, TableRow } from "#/components/ui/table";
 import {
 	formatBRL,
 	formatWeekday,
-	getNomeMes,
 	isFutureDate,
 	isToday,
 	saldoColour,
@@ -12,20 +11,8 @@ import {
 import { cn } from "#/lib/utils";
 import type { DayEntry } from "../types/models";
 import type { CategoryFilter, SaldoMode } from "../types/preferences";
-import type {
-	Transaction,
-	TransactionCategory,
-	TransactionRecurrence,
-} from "../types/transaction";
-import { ClickableCell } from "./ClickableCell";
-import { DeleteRecurrenceModal } from "./DeleteRecurrenceModal";
-
-const AddEntryModal = React.lazy(() =>
-	import("./AddEntryModal").then((m) => ({ default: m.AddEntryModal })),
-);
-const EntryListModal = React.lazy(() =>
-	import("./EntryListModal").then((m) => ({ default: m.EntryListModal })),
-);
+import type { TransactionCategory } from "../types/transaction";
+import { CategoryMark } from "./CategoryMark";
 
 interface DayRowProps {
 	day: number;
@@ -37,40 +24,8 @@ interface DayRowProps {
 	dailyBudget: number;
 	saldoMode: SaldoMode;
 	categoryFilter: CategoryFilter;
-	onAddTransaction: (params: {
-		year: number;
-		month: number;
-		day: number;
-		category: TransactionCategory;
-		value: number;
-		description: string;
-		recurrence: TransactionRecurrence;
-	}) => Promise<void>;
-	onDeleteTransaction: (params: {
-		tx: Transaction;
-		scope: "single" | "this-and-next";
-	}) => Promise<void>;
-	onGetTransactions: (
-		year: number,
-		month: number,
-		day: number,
-		category: TransactionCategory,
-	) => Promise<Transaction[]>;
+	onSelectDay: () => void;
 }
-
-type ModalState =
-	| { type: "closed" }
-	| { type: "add"; category: TransactionCategory }
-	| {
-			type: "edit";
-			category: TransactionCategory;
-			editTx: Transaction;
-	  }
-	| {
-			type: "list";
-			category: TransactionCategory;
-			transactions: Transaction[];
-	  };
 
 const CATEGORIES: TransactionCategory[] = [
 	"entradas",
@@ -78,13 +33,6 @@ const CATEGORIES: TransactionCategory[] = [
 	"diario",
 	"economias",
 ];
-
-const CATEGORY_FIELD_LABELS: Record<TransactionCategory, string> = {
-	entradas: "Entradas",
-	saidas: "Saídas",
-	diario: "Diário",
-	economias: "Economias",
-};
 
 const SALDO_COLOR_LABELS = {
 	"dark-green": "Saldo muito positivo",
@@ -104,14 +52,8 @@ const DayRow = React.memo(function DayRow({
 	dailyBudget,
 	saldoMode,
 	categoryFilter,
-	onAddTransaction,
-	onDeleteTransaction,
-	onGetTransactions,
+	onSelectDay,
 }: DayRowProps) {
-	const [modal, setModal] = useState<ModalState>({ type: "closed" });
-	const [pendingRecurringDelete, setPendingRecurringDelete] =
-		useState<Transaction | null>(null);
-
 	const dayIsToday = isToday(year, month, day);
 	const dayIsFuture = isFutureDate(year, month, day);
 	const dayOfWeek = new Date(year, month - 1, day).getDay();
@@ -122,125 +64,16 @@ const DayRow = React.memo(function DayRow({
 		saldoInicial,
 		future: dayIsFuture,
 	});
-	const monthName = getNomeMes(month);
 	const weekday = formatWeekday(year, month, day);
 
-	const makeAriaLabel = useCallback(
-		(field: string) => `${field} do dia ${day} de ${monthName}`,
-		[day, monthName],
-	);
-
-	const handleClick = useCallback(
-		async (category: TransactionCategory) => {
-			setModal({ type: "list", category, transactions: [] });
-			const txs = await onGetTransactions(year, month, day, category);
-			setModal({ type: "list", category, transactions: txs });
+	const handleKeyDown = useCallback(
+		(event: React.KeyboardEvent<HTMLTableRowElement>) => {
+			if (event.key !== "Enter" && event.key !== " ") return;
+			event.preventDefault();
+			onSelectDay();
 		},
-		[year, month, day, onGetTransactions],
+		[onSelectDay],
 	);
-
-	const handleDoubleClick = useCallback((category: TransactionCategory) => {
-		setModal({ type: "add", category });
-	}, []);
-
-	const handleCloseModal = useCallback(() => {
-		setModal({ type: "closed" });
-	}, []);
-
-	const handleSaveEntry = useCallback(
-		async (data: {
-			value: number;
-			description: string;
-			day: number;
-			recurrence: TransactionRecurrence;
-		}) => {
-			if (modal.type !== "add" && modal.type !== "edit") return;
-
-			// If editing, delete the old transaction first
-			if (modal.type === "edit") {
-				const isRecurring =
-					modal.editTx.recurrence &&
-					modal.editTx.recurrence !== "none" &&
-					Boolean(modal.editTx.seriesId);
-				await onDeleteTransaction({
-					tx: modal.editTx,
-					scope: isRecurring ? "this-and-next" : "single",
-				});
-			}
-
-			await onAddTransaction({
-				year,
-				month,
-				day: data.day,
-				category: modal.category,
-				value: data.value,
-				description: data.description,
-				recurrence: data.recurrence,
-			});
-			setModal({ type: "closed" });
-		},
-		[modal, year, month, onAddTransaction, onDeleteTransaction],
-	);
-
-	const handleEditEntry = useCallback((tx: Transaction) => {
-		setModal({ type: "edit", category: tx.category, editTx: tx });
-	}, []);
-
-	const applyDelete = useCallback(
-		(tx: Transaction, scope: "single" | "this-and-next") => {
-			onDeleteTransaction({ tx, scope });
-
-			if (modal.type !== "list") return;
-
-			const remaining =
-				scope === "this-and-next" && tx.seriesId
-					? modal.transactions.filter((item) => item.seriesId !== tx.seriesId)
-					: modal.transactions.filter((item) => item.id !== tx.id);
-
-			if (remaining.length === 0) {
-				setModal({ type: "closed" });
-			} else {
-				setModal({
-					type: "list",
-					category: modal.category,
-					transactions: remaining,
-				});
-			}
-		},
-		[modal, onDeleteTransaction],
-	);
-
-	const handleDeleteEntry = useCallback(
-		(tx: Transaction) => {
-			if (modal.type !== "list") return;
-			const isRecurring =
-				tx.recurrence && tx.recurrence !== "none" && Boolean(tx.seriesId);
-
-			if (isRecurring) {
-				setPendingRecurringDelete(tx);
-				return;
-			}
-
-			applyDelete(tx, "single");
-		},
-		[modal, applyDelete],
-	);
-
-	const handleCloseDeleteRecurrenceModal = useCallback(() => {
-		setPendingRecurringDelete(null);
-	}, []);
-
-	const handleDeleteSingle = useCallback(() => {
-		if (!pendingRecurringDelete) return;
-		applyDelete(pendingRecurringDelete, "single");
-		setPendingRecurringDelete(null);
-	}, [pendingRecurringDelete, applyDelete]);
-
-	const handleDeleteThisAndNext = useCallback(() => {
-		if (!pendingRecurringDelete) return;
-		applyDelete(pendingRecurringDelete, "this-and-next");
-		setPendingRecurringDelete(null);
-	}, [pendingRecurringDelete, applyDelete]);
 
 	const rowClass = cn(
 		"group relative transition-colors",
@@ -249,7 +82,7 @@ const DayRow = React.memo(function DayRow({
 	);
 	const dayCellClass = cn(
 		"relative w-10 text-center font-medium",
-		"py-[var(--balance-row-py)]",
+		"py-(--balance-row-py)",
 		dayIsToday ? "bg-emerald-500/10" : "",
 		isWeekend && !dayIsToday && "bg-muted/35",
 	);
@@ -266,99 +99,55 @@ const DayRow = React.memo(function DayRow({
 	const saldoLabel = `${formatBRL(saldo)} — ${SALDO_COLOR_LABELS[saldoColor.tier]}`;
 
 	return (
-		<>
-			<TableRow className={rowClass}>
-				<TableCell className={dayCellClass}>
-					{dayIsToday && (
-						<span className="absolute top-0 bottom-0 left-0 w-1 rounded-r-full bg-emerald-500" />
+		<TableRow
+			className={rowClass}
+			onClick={onSelectDay}
+			onKeyDown={handleKeyDown}
+			tabIndex={0}
+			aria-label={`Abrir detalhes de ${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`}
+		>
+			<TableCell className={dayCellClass}>
+				{dayIsToday && (
+					<span className="absolute top-0 bottom-0 left-0 w-1 rounded-r-full bg-emerald-500" />
+				)}
+				<span className="flex flex-col items-center leading-none">
+					<span className=" font-bold text-(length:--balance-day-size) tabular-nums">
+						{String(day).padStart(2, "0")}
+					</span>
+					<span className="mt-0.5 text-[9px] font-bold text-muted-foreground tracking-wider">
+						{weekday}
+					</span>
+				</span>
+			</TableCell>
+			{visibleCategories.map((cat) => (
+				<TableCell
+					key={cat}
+					className={cn(
+						"w-28 py-(--balance-row-py)",
+						dayIsFuture && cat === "diario" && "opacity-70",
 					)}
-					<span className="flex flex-col items-center leading-none">
-						<span className="font-mono font-bold text-[length:var(--balance-day-size)] tabular-nums">
-							{String(day).padStart(2, "0")}
-						</span>
-						<span className="mt-0.5 text-[9px] font-bold text-muted-foreground tracking-wider">
-							{weekday}
+				>
+					<span className="grid w-full grid-cols-[1rem_1fr] items-center gap-1.5">
+						<CategoryMark category={cat} active={values[cat] > 0} />
+						<span className="text-right tabular-nums">
+							{formatBRL(values[cat])}
 						</span>
 					</span>
 				</TableCell>
-				{visibleCategories.map((cat) => (
-					<TableCell
-						key={cat}
-						className={cn(
-							"w-28 py-[var(--balance-row-py)] text-right",
-							dayIsFuture && cat === "diario" && "opacity-70",
-						)}
-					>
-						<ClickableCell
-							category={cat}
-							value={values[cat]}
-							ariaLabel={makeAriaLabel(CATEGORY_FIELD_LABELS[cat])}
-							onClick={() => handleClick(cat)}
-							onDoubleClick={() => handleDoubleClick(cat)}
-						/>
-					</TableCell>
-				))}
-				<TableCell
-					aria-label={saldoLabel}
-					style={{
-						backgroundColor: saldoColor.fill,
-						color: saldoColor.ink,
-					}}
-					className={cn(
-						"w-28 py-[var(--balance-row-py)] text-right text-xs font-semibold tabular-nums transition-colors duration-200 ease-out",
-					)}
-				>
-					{formatBRL(saldo)}
-				</TableCell>
-			</TableRow>
-
-			{modal.type !== "closed" && (
-				<Suspense fallback={null}>
-					{(modal.type === "add" || modal.type === "edit") && (
-						<AddEntryModal
-							open
-							category={modal.category}
-							defaultDay={day}
-							month={month}
-							year={year}
-							onClose={handleCloseModal}
-							onSave={handleSaveEntry}
-							editData={
-								modal.type === "edit"
-									? {
-											value: modal.editTx.value,
-											description: modal.editTx.description,
-											recurrence: modal.editTx.recurrence ?? "none",
-										}
-									: undefined
-							}
-						/>
-					)}
-
-					{modal.type === "list" && (
-						<EntryListModal
-							open
-							category={modal.category}
-							day={day}
-							month={month}
-							year={year}
-							transactions={modal.transactions}
-							onClose={handleCloseModal}
-							onDelete={handleDeleteEntry}
-							onEdit={handleEditEntry}
-						/>
-					)}
-				</Suspense>
-			)}
-
-			<DeleteRecurrenceModal
-				open={pendingRecurringDelete !== null}
-				tx={pendingRecurringDelete}
-				onClose={handleCloseDeleteRecurrenceModal}
-				onDeleteSingle={handleDeleteSingle}
-				onDeleteThisAndNext={handleDeleteThisAndNext}
-			/>
-		</>
+			))}
+			<TableCell
+				aria-label={saldoLabel}
+				style={{
+					backgroundColor: saldoColor.fill,
+					color: saldoColor.ink,
+				}}
+				className={cn(
+					"w-28 py-(--balance-row-py) text-right text-xs font-semibold tabular-nums transition-colors duration-200 ease-out",
+				)}
+			>
+				{formatBRL(saldo)}
+			</TableCell>
+		</TableRow>
 	);
 });
 
