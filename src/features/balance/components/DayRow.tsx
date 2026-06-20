@@ -4,6 +4,7 @@ import { TableCell, TableRow } from "#/components/ui/table";
 import { formatBRL, getNomeMes, getSaldoColor, isToday } from "#/lib/finance";
 import { cn } from "#/lib/utils";
 import type { DayEntry, SaldoColor } from "../types/models";
+import type { CategoryFilter } from "../types/preferences";
 import type {
 	Transaction,
 	TransactionCategory,
@@ -26,6 +27,7 @@ interface DayRowProps {
 	entry: DayEntry;
 	saldo: number;
 	saldoInicial: number;
+	categoryFilter: CategoryFilter;
 	onAddTransaction: (params: {
 		year: number;
 		month: number;
@@ -98,6 +100,7 @@ const DayRow = React.memo(function DayRow({
 	entry,
 	saldo,
 	saldoInicial,
+	categoryFilter,
 	onAddTransaction,
 	onDeleteTransaction,
 	onGetTransactions,
@@ -242,13 +245,16 @@ const DayRow = React.memo(function DayRow({
 		diario: entry.diario,
 		economias: entry.economias,
 	};
+	const visibleCategories = CATEGORIES.filter(
+		(category) => categoryFilter === "todas" || categoryFilter === category,
+	);
 	const saldoLabel = `${formatBRL(saldo)} — ${SALDO_COLOR_LABELS[saldoColor]}`;
 
 	return (
 		<>
 			<TableRow className={rowClass}>
 				<TableCell className={dayCellClass}>{day}</TableCell>
-				{CATEGORIES.map((cat) => (
+				{visibleCategories.map((cat) => (
 					<TableCell key={cat} className="w-28 text-right">
 						<ClickableCell
 							category={cat}

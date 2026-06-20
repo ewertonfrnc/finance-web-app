@@ -16,6 +16,8 @@ import {
 import { cn } from "#/lib/utils";
 import { useTransactions } from "../hooks/useTransactions";
 import type { DayEntry, FinanceYear } from "../types/models";
+import type { BalanceDensity, CategoryFilter } from "../types/preferences";
+import type { TransactionCategory } from "../types/transaction";
 import { CategoryMark } from "./CategoryMark";
 import { DayRow } from "./DayRow";
 import { MonthSummary } from "./MonthSummary";
@@ -25,13 +27,24 @@ interface MonthTableProps {
 	year: number;
 	financeYear: FinanceYear;
 	saldoInicialMes: number;
+	categoryFilter: CategoryFilter;
+	density: BalanceDensity;
 }
+
+const CATEGORIES: Array<{ key: TransactionCategory; label: string }> = [
+	{ key: "entradas", label: "Entradas" },
+	{ key: "saidas", label: "Saídas" },
+	{ key: "diario", label: "Diários" },
+	{ key: "economias", label: "Economias" },
+];
 
 export function MonthTable({
 	month,
 	year,
 	financeYear,
 	saldoInicialMes,
+	categoryFilter,
+	density,
 }: MonthTableProps) {
 	const {
 		addTransaction: addTx,
@@ -86,9 +99,17 @@ export function MonthTable({
 		diario: 0,
 		economias: 0,
 	};
+	const visibleCategories = CATEGORIES.filter(
+		(category) => categoryFilter === "todas" || categoryFilter === category.key,
+	);
 
 	return (
-		<div className="min-w-90 shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+		<div
+			className={cn(
+				"shrink-0 overflow-hidden rounded-lg border border-border bg-card",
+				categoryFilter === "todas" ? "min-w-90" : "min-w-64",
+			)}
+		>
 			<h2
 				className={cn(
 					"border-b border-border bg-muted/40 px-3 py-2 text-sm font-medium",
@@ -128,36 +149,29 @@ export function MonthTable({
 					Saldo: {formatBRL(saldos[daysInMonth] ?? saldoInicialMes)}
 				</div>
 			) : (
-				<Table className="table-fixed text-xs">
+				<Table
+					className={cn(
+						"table-fixed text-xs",
+						density === "compacto" && "text-[11px]",
+					)}
+				>
 					<TableHeader>
 						<TableRow>
 							<TableHead scope="col" className="w-10 text-center text-xs">
 								Dia
 							</TableHead>
-							<TableHead scope="col" className="w-32 text-right text-xs">
-								<span className="grid w-full grid-cols-[1rem_1fr] items-center gap-1.5">
-									<CategoryMark category="entradas" active />
-									<span className="text-right">Entradas</span>
-								</span>
-							</TableHead>
-							<TableHead scope="col" className="w-32 text-right text-xs">
-								<span className="grid w-full grid-cols-[1rem_1fr] items-center gap-1.5">
-									<CategoryMark category="saidas" active />
-									<span className="text-right">Saídas</span>
-								</span>
-							</TableHead>
-							<TableHead scope="col" className="w-32 text-right text-xs">
-								<span className="grid w-full grid-cols-[1rem_1fr] items-center gap-1.5">
-									<CategoryMark category="diario" active />
-									<span className="text-right">Diários</span>
-								</span>
-							</TableHead>
-							<TableHead scope="col" className="w-32 text-right text-xs">
-								<span className="grid w-full grid-cols-[1rem_1fr] items-center gap-1.5">
-									<CategoryMark category="economias" active />
-									<span className="text-right">Economias</span>
-								</span>
-							</TableHead>
+							{visibleCategories.map((category) => (
+								<TableHead
+									key={category.key}
+									scope="col"
+									className="w-32 text-right text-xs"
+								>
+									<span className="grid w-full grid-cols-[1rem_1fr] items-center gap-1.5">
+										<CategoryMark category={category.key} active />
+										<span className="text-right">{category.label}</span>
+									</span>
+								</TableHead>
+							))}
 							<TableHead scope="col" className="w-32 text-right text-xs">
 								Saldo
 							</TableHead>
@@ -177,6 +191,7 @@ export function MonthTable({
 									entry={entry}
 									saldo={saldo}
 									saldoInicial={financeYear.saldoInicial}
+									categoryFilter={categoryFilter}
 									onAddTransaction={addTx}
 									onDeleteTransaction={deleteTx}
 									onGetTransactions={getTransactions}

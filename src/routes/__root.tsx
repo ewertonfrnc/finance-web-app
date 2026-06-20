@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import ThemeToggle from "#/components/ThemeToggle";
 import { Toaster } from "#/components/ui/sonner";
 
 import "../styles.css";
@@ -14,9 +13,6 @@ export const Route = createRootRoute({
 function RootComponent() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<div className="fixed top-3 right-3 z-40 md:top-4 md:right-4">
-				<ThemeToggle />
-			</div>
 			<Outlet />
 			<Toaster position="bottom-right" richColors />
 		</QueryClientProvider>
