@@ -61,6 +61,7 @@ export async function getFinanceYearFromApi(
 								saidas: centsToReais(apiDay?.expense ?? 0),
 								diario: centsToReais(apiDay?.daily ?? 0),
 								economias: centsToReais(apiDay?.savings ?? 0),
+								saldo: centsToReais(apiDay?.running_balance ?? 0),
 							},
 						];
 					}),

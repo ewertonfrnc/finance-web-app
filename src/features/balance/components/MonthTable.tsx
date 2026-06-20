@@ -8,7 +8,6 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import {
-	calcularSaldosMes,
 	calcularTotaisMes,
 	formatBRL,
 	getDiasNoMes,
@@ -16,7 +15,6 @@ import {
 } from "#/lib/finance";
 import { cn } from "#/lib/utils";
 import { useTransactions } from "../hooks/useTransactions";
-import { readMonthConfig } from "../service/localStorageAdapter";
 import type { DayEntry, FinanceYear } from "../types/models";
 import { CategoryMark } from "./CategoryMark";
 import { DayRow } from "./DayRow";
@@ -35,27 +33,29 @@ export function MonthTable({
 	financeYear,
 	saldoInicialMes,
 }: MonthTableProps) {
-	const { addTransaction: addTx, deleteTransaction: deleteTx } =
-		useTransactions(year);
+	const {
+		addTransaction: addTx,
+		deleteTransaction: deleteTx,
+		getTransactions,
+	} = useTransactions(year);
 
 	const monthData = financeYear.months[month];
 	const daysInMonth = getDiasNoMes(year, month);
 	const monthName = getNomeMes(month);
-
-	const diarioConfig = useMemo(() => {
-		const config = readMonthConfig(year, month);
-		return config?.diario_value ?? 0;
-	}, [year, month]);
 
 	const days = useMemo(() => {
 		if (!monthData) return {} as Record<number, DayEntry>;
 		return monthData.days;
 	}, [monthData]);
 
-	const saldos = useMemo(
-		() => calcularSaldosMes(days, saldoInicialMes, daysInMonth),
-		[days, saldoInicialMes, daysInMonth],
-	);
+	const saldos = useMemo(() => {
+		return Object.fromEntries(
+			Array.from({ length: daysInMonth }, (_, index) => {
+				const day = index + 1;
+				return [day, days[day]?.saldo ?? saldoInicialMes];
+			}),
+		);
+	}, [days, saldoInicialMes, daysInMonth]);
 
 	const totals = useMemo(() => calcularTotaisMes(days), [days]);
 
@@ -83,7 +83,7 @@ export function MonthTable({
 	const emptyDay: DayEntry = {
 		entradas: 0,
 		saidas: 0,
-		diario: diarioConfig,
+		diario: 0,
 		economias: 0,
 	};
 
@@ -179,6 +179,7 @@ export function MonthTable({
 									saldoInicial={financeYear.saldoInicial}
 									onAddTransaction={addTx}
 									onDeleteTransaction={deleteTx}
+									onGetTransactions={getTransactions}
 								/>
 							);
 						})}

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Skeleton } from "#/components/ui/skeleton";
-import { calcularSaldosMes, getDiasNoMes } from "#/lib/finance";
 import { cn } from "#/lib/utils";
 import { useFinanceYear } from "../hooks/useFinanceYear";
+import type { DayEntry } from "../types/models";
 import { LazyMonth } from "./LazyMonth";
 import { MonthTable } from "./MonthTable";
 
@@ -11,6 +11,11 @@ interface MonthGridProps {
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+function getSaldoInicialFromFirstDay(day: DayEntry | undefined): number {
+	if (!day || day.saldo === undefined) return 0;
+	return day.saldo - day.entradas + day.saidas + day.diario + day.economias;
+}
 
 export function MonthGrid({ year }: MonthGridProps) {
 	const { data: financeYear, isLoading, isError } = useFinanceYear(year);
@@ -22,25 +27,14 @@ export function MonthGrid({ year }: MonthGridProps) {
 		if (!financeYear) return {};
 
 		const result: Record<number, number> = {};
-		let carryOver = financeYear.saldoInicial;
 
 		MONTHS.forEach((m) => {
-			result[m] = carryOver;
-
 			const monthData = financeYear.months[m];
-			if (monthData) {
-				const daysInMonth = getDiasNoMes(year, m);
-				const saldos = calcularSaldosMes(
-					monthData.days,
-					carryOver,
-					daysInMonth,
-				);
-				carryOver = saldos[daysInMonth] ?? carryOver;
-			}
+			result[m] = getSaldoInicialFromFirstDay(monthData?.days[1]);
 		});
 
 		return result;
-	}, [financeYear, year]);
+	}, [financeYear]);
 
 	const targetMonth = useMemo(() => {
 		const now = new Date();

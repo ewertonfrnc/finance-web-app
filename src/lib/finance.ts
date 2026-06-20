@@ -32,58 +32,6 @@ export function isToday(year: number, month: number, day: number): boolean {
 	);
 }
 
-export function calcularSaldosMes(
-	days: Record<number, DayEntry>,
-	saldoInicial: number,
-	daysInMonth: number,
-): Record<number, number> {
-	const saldos: Record<number, number> = {};
-	let saldoAnterior = saldoInicial;
-
-	Array.from({ length: daysInMonth }, (_, i) => i + 1).forEach((day) => {
-		const entry = days[day];
-
-		if (entry) {
-			saldos[day] =
-				saldoAnterior +
-				entry.entradas -
-				entry.saidas -
-				entry.diario -
-				entry.economias;
-		} else {
-			saldos[day] = saldoAnterior;
-		}
-
-		saldoAnterior = saldos[day];
-	});
-
-	return saldos;
-}
-
-export function calcularSaldoInicialMes(
-	year: number,
-	targetMonth: number,
-	financeYear: {
-		saldoInicial: number;
-		months: Record<number, { days: Record<number, DayEntry> }>;
-	},
-): number {
-	let saldo = financeYear.saldoInicial;
-
-	Array.from({ length: targetMonth - 1 }, (_, i) => i + 1).forEach((m) => {
-		const monthData = financeYear.months[m];
-		if (!monthData) return;
-
-		const daysInMonth = getDiasNoMes(year, m);
-		const saldos = calcularSaldosMes(monthData.days, saldo, daysInMonth);
-
-		const lastDay = daysInMonth;
-		saldo = saldos[lastDay] ?? saldo;
-	});
-
-	return saldo;
-}
-
 export interface MonthTotals {
 	entradas: number;
 	saidas: number;

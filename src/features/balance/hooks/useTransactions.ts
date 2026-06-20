@@ -1,29 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { writeDayData } from "../service/localStorageAdapter";
-import { createTransaction } from "../service/transactionApi";
 import {
-	readTransactions,
-	removeTransaction,
-	removeTransactionsFromSeries,
-	sumTransactions,
-} from "../service/transactionStorage";
-import type { Transaction, TransactionCategory } from "../types/transaction";
-
-function recalcDayField(
-	year: number,
-	month: number,
-	day: number,
-	category: TransactionCategory,
-): void {
-	const total = sumTransactions(year, month, day, category);
-	writeDayData(year, month, day, { [category]: total });
-}
-
-interface DeleteParams {
-	tx: Transaction;
-	scope: "single" | "this-and-next";
-}
+	createTransaction,
+	deleteTransaction,
+	listTransactions,
+} from "../service/transactionApi";
+import type { TransactionCategory } from "../types/transaction";
 
 export function useTransactions(_year: number) {
 	const queryClient = useQueryClient();
@@ -42,52 +24,35 @@ export function useTransactions(_year: number) {
 	});
 
 	const deleteMutation = useMutation({
-		mutationFn: async (params: DeleteParams) => {
-			if (
-				params.scope === "this-and-next" &&
-				params.tx.seriesId &&
-				params.tx.recurrence &&
-				params.tx.recurrence !== "none"
-			) {
-				const affectedDates = removeTransactionsFromSeries({
-					seriesId: params.tx.seriesId,
-					category: params.tx.category,
-					from: {
-						year: params.tx.year,
-						month: params.tx.month,
-						day: params.tx.day,
-					},
-				});
-
-				affectedDates.forEach((date) => {
-					recalcDayField(date.year, date.month, date.day, params.tx.category);
-				});
-				return;
-			}
-
-			removeTransaction(
-				params.tx.year,
-				params.tx.month,
-				params.tx.day,
-				params.tx.category,
-				params.tx.id,
-			);
-			recalcDayField(
-				params.tx.year,
-				params.tx.month,
-				params.tx.day,
-				params.tx.category,
-			);
-		},
+		mutationFn: deleteTransaction,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["balance"] });
 			toast.success("Lançamento excluído");
 		},
+		onError: (error) => {
+			toast.error(
+				error instanceof Error ? error.message : "Erro ao excluir lançamento",
+			);
+		},
 	});
 
 	return {
-		addTransaction: addMutation.mutate,
-		deleteTransaction: deleteMutation.mutate,
-		getTransactions: readTransactions,
+		addTransaction: addMutation.mutateAsync,
+		deleteTransaction: deleteMutation.mutateAsync,
+		getTransactions: async (
+			year: number,
+			month: number,
+			day: number,
+			category: TransactionCategory,
+		) => {
+			try {
+				return await listTransactions({ year, month, day, category });
+			} catch (error) {
+				toast.error(
+					error instanceof Error ? error.message : "Erro ao listar lançamentos",
+				);
+				return [];
+			}
+		},
 	};
 }

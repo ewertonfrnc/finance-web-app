@@ -3,6 +3,7 @@ export interface DayEntry {
 	saidas: number;
 	diario: number;
 	economias: number;
+	saldo?: number;
 }
 
 export interface MonthBalance {

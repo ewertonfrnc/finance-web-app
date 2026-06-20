@@ -3,7 +3,6 @@ import { Suspense, useCallback, useState } from "react";
 import { TableCell, TableRow } from "#/components/ui/table";
 import { formatBRL, getNomeMes, getSaldoColor, isToday } from "#/lib/finance";
 import { cn } from "#/lib/utils";
-import { readTransactions } from "../service/transactionStorage";
 import type { DayEntry, SaldoColor } from "../types/models";
 import type {
 	Transaction,
@@ -35,11 +34,17 @@ interface DayRowProps {
 		value: number;
 		description: string;
 		recurrence: TransactionRecurrence;
-	}) => void;
+	}) => Promise<void>;
 	onDeleteTransaction: (params: {
 		tx: Transaction;
 		scope: "single" | "this-and-next";
-	}) => void;
+	}) => Promise<void>;
+	onGetTransactions: (
+		year: number,
+		month: number,
+		day: number,
+		category: TransactionCategory,
+	) => Promise<Transaction[]>;
 }
 
 type ModalState =
@@ -95,6 +100,7 @@ const DayRow = React.memo(function DayRow({
 	saldoInicial,
 	onAddTransaction,
 	onDeleteTransaction,
+	onGetTransactions,
 }: DayRowProps) {
 	const [modal, setModal] = useState<ModalState>({ type: "closed" });
 	const [pendingRecurringDelete, setPendingRecurringDelete] =
@@ -112,11 +118,12 @@ const DayRow = React.memo(function DayRow({
 	);
 
 	const handleClick = useCallback(
-		(category: TransactionCategory) => {
-			const txs = readTransactions(year, month, day, category);
+		async (category: TransactionCategory) => {
+			setModal({ type: "list", category, transactions: [] });
+			const txs = await onGetTransactions(year, month, day, category);
 			setModal({ type: "list", category, transactions: txs });
 		},
-		[year, month, day],
+		[year, month, day, onGetTransactions],
 	);
 
 	const handleDoubleClick = useCallback((category: TransactionCategory) => {
@@ -128,7 +135,7 @@ const DayRow = React.memo(function DayRow({
 	}, []);
 
 	const handleSaveEntry = useCallback(
-		(data: {
+		async (data: {
 			value: number;
 			description: string;
 			day: number;
@@ -142,13 +149,13 @@ const DayRow = React.memo(function DayRow({
 					modal.editTx.recurrence &&
 					modal.editTx.recurrence !== "none" &&
 					Boolean(modal.editTx.seriesId);
-				onDeleteTransaction({
+				await onDeleteTransaction({
 					tx: modal.editTx,
 					scope: isRecurring ? "this-and-next" : "single",
 				});
 			}
 
-			onAddTransaction({
+			await onAddTransaction({
 				year,
 				month,
 				day: data.day,
