@@ -8,6 +8,7 @@
 
 @theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --spacing-header: 5.5rem;
 }
 
 :root {

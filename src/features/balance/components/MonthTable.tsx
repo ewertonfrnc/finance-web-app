@@ -132,14 +132,15 @@ export function MonthTable({
 				} as CSSProperties
 			}
 			className={cn(
-				"shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm",
-				isCurrentMonth && "border-emerald-500/70 shadow-emerald-500/10",
+				"shrink-0 overflow-visible rounded-xl border border-border bg-card shadow-sm",
+				isCurrentMonth &&
+					"border-emerald-500/70 shadow-emerald-500/10 ring-1 ring-emerald-500/60",
 				categoryFilter === "todas" ? "min-w-90" : "min-w-64",
 			)}
 		>
 			<h2
 				className={cn(
-					"border-b border-border bg-muted/40 px-3 py-2.5 text-sm font-medium",
+					"relative z-20 rounded-t-xl border-b border-border bg-muted/95 px-3 py-2.5 text-sm font-medium shadow-xs backdrop-blur supports-[backdrop-filter]:bg-muted/80 lg:sticky lg:top-0",
 					isEmptyMonth && "cursor-pointer select-none",
 				)}
 				onClick={isEmptyMonth ? () => setCollapsed((c) => !c) : undefined}

@@ -1,4 +1,6 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "#/components/ui/button";
 import { Skeleton } from "#/components/ui/skeleton";
 import { cn } from "#/lib/utils";
 import { useFinanceYear } from "../hooks/useFinanceYear";
@@ -82,6 +84,20 @@ export function MonthGrid({
 		setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
 	}, []);
 
+	const scrollByMonths = useCallback((direction: -1 | 1) => {
+		const container = containerRef.current;
+		if (!container) return;
+
+		const firstMonth = Object.values(monthRefs.current).find(Boolean);
+		const monthWidth = firstMonth?.getBoundingClientRect().width ?? 360;
+		const gap = 16;
+
+		container.scrollBy({
+			left: direction * (monthWidth + gap) * 2,
+			behavior: "smooth",
+		});
+	}, []);
+
 	useEffect(() => {
 		const el = containerRef.current;
 		if (!el) return;
@@ -89,6 +105,12 @@ export function MonthGrid({
 		updateScrollIndicators();
 		return () => el.removeEventListener("scroll", updateScrollIndicators);
 	}, [updateScrollIndicators]);
+
+	useEffect(() => {
+		if (!financeYear) return;
+		const frame = requestAnimationFrame(updateScrollIndicators);
+		return () => cancelAnimationFrame(frame);
+	}, [financeYear, updateScrollIndicators]);
 
 	if (isLoading) {
 		return (
@@ -116,6 +138,34 @@ export function MonthGrid({
 
 	return (
 		<div className="relative">
+			<Button
+				type="button"
+				variant="outline"
+				size="icon-sm"
+				onClick={() => scrollByMonths(-1)}
+				disabled={!canScrollLeft}
+				aria-label="Voltar dois meses"
+				className={cn(
+					"absolute top-[45vh] left-3 z-30 hidden rounded-full bg-background/95 shadow-xl backdrop-blur transition-opacity md:inline-flex",
+					!canScrollLeft && "opacity-0",
+				)}
+			>
+				<ChevronLeft />
+			</Button>
+			<Button
+				type="button"
+				variant="outline"
+				size="icon-sm"
+				onClick={() => scrollByMonths(1)}
+				disabled={!canScrollRight}
+				aria-label="Avançar dois meses"
+				className={cn(
+					"absolute top-[45vh] right-3 z-30 hidden rounded-full bg-background/95 shadow-xl backdrop-blur transition-opacity md:inline-flex",
+					!canScrollRight && "opacity-0",
+				)}
+			>
+				<ChevronRight />
+			</Button>
 			<div
 				className={cn(
 					"pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-linear-to-r from-background to-transparent transition-opacity duration-200",
@@ -128,7 +178,10 @@ export function MonthGrid({
 					canScrollRight ? "opacity-100" : "opacity-0",
 				)}
 			/>
-			<div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4">
+			<div
+				ref={containerRef}
+				className="flex gap-4 overflow-x-auto pb-4 lg:sticky lg:top-header lg:max-h-[calc(100dvh-var(--spacing-header))] lg:overflow-y-auto"
+			>
 				{MONTHS.map((m) => {
 					const table = (
 						<MonthTable
