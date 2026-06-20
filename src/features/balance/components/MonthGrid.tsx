@@ -56,23 +56,32 @@ export function MonthGrid({
 		return year === now.getFullYear() ? now.getMonth() + 1 : 1;
 	}, [year]);
 
+	const monthScrollLeft = useCallback((month: number) => {
+		const container = containerRef.current;
+		const el = monthRefs.current[month];
+		if (!container || !el) return 0;
+		return Math.max(0, el.offsetLeft - container.offsetLeft - 8);
+	}, []);
+
+	const scrollToMonth = useCallback(
+		(month: number, behavior: ScrollBehavior = "smooth") => {
+			const container = containerRef.current;
+			const el = monthRefs.current[month];
+			if (!container || !el) return;
+			container.scrollTo({ left: monthScrollLeft(month), behavior });
+			el.focus({ preventScroll: true });
+		},
+		[monthScrollLeft],
+	);
+
 	useEffect(() => {
 		if (!financeYear) return;
 		if (focusedYearRef.current === year) return;
+		if (!containerRef.current || !monthRefs.current[targetMonth]) return;
 
-		const container = containerRef.current;
-		const el = monthRefs.current[targetMonth];
-		if (!container || !el) return;
-
-		const left = el.offsetLeft - container.offsetLeft;
-		container.scrollTo({
-			left: Math.max(0, left - 8),
-			behavior: "auto",
-		});
-
-		el.focus({ preventScroll: true });
+		scrollToMonth(targetMonth, "auto");
 		focusedYearRef.current = year;
-	}, [year, targetMonth, financeYear]);
+	}, [year, targetMonth, financeYear, scrollToMonth]);
 
 	const [canScrollLeft, setCanScrollLeft] = useState(false);
 	const [canScrollRight, setCanScrollRight] = useState(false);
@@ -84,19 +93,32 @@ export function MonthGrid({
 		setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
 	}, []);
 
-	const scrollByMonths = useCallback((direction: -1 | 1) => {
+	const getFocusedMonth = useCallback(() => {
 		const container = containerRef.current;
-		if (!container) return;
+		if (!container) return targetMonth;
 
-		const firstMonth = Object.values(monthRefs.current).find(Boolean);
-		const monthWidth = firstMonth?.getBoundingClientRect().width ?? 360;
-		const gap = 16;
+		const { scrollLeft } = container;
+		let closest = MONTHS[0];
+		let minDistance = Number.POSITIVE_INFINITY;
+		for (const month of MONTHS) {
+			if (!monthRefs.current[month]) continue;
+			const distance = Math.abs(monthScrollLeft(month) - scrollLeft);
+			if (distance < minDistance) {
+				minDistance = distance;
+				closest = month;
+			}
+		}
+		return closest;
+	}, [monthScrollLeft, targetMonth]);
 
-		container.scrollBy({
-			left: direction * (monthWidth + gap) * 2,
-			behavior: "smooth",
-		});
-	}, []);
+	const scrollByMonths = useCallback(
+		(direction: -1 | 1) => {
+			const current = getFocusedMonth();
+			const next = Math.min(12, Math.max(1, current + direction));
+			scrollToMonth(next);
+		},
+		[getFocusedMonth, scrollToMonth],
+	);
 
 	useEffect(() => {
 		const el = containerRef.current;
@@ -144,7 +166,7 @@ export function MonthGrid({
 				size="icon-sm"
 				onClick={() => scrollByMonths(-1)}
 				disabled={!canScrollLeft}
-				aria-label="Voltar dois meses"
+				aria-label="Mês anterior"
 				className={cn(
 					"absolute top-[45vh] left-3 z-30 hidden rounded-full bg-background/95 shadow-xl backdrop-blur transition-opacity md:inline-flex",
 					!canScrollLeft && "opacity-0",
@@ -158,7 +180,7 @@ export function MonthGrid({
 				size="icon-sm"
 				onClick={() => scrollByMonths(1)}
 				disabled={!canScrollRight}
-				aria-label="Avançar dois meses"
+				aria-label="Próximo mês"
 				className={cn(
 					"absolute top-[45vh] right-3 z-30 hidden rounded-full bg-background/95 shadow-xl backdrop-blur transition-opacity md:inline-flex",
 					!canScrollRight && "opacity-0",
@@ -166,18 +188,6 @@ export function MonthGrid({
 			>
 				<ChevronRight />
 			</Button>
-			<div
-				className={cn(
-					"pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-linear-to-r from-background to-transparent transition-opacity duration-200",
-					canScrollLeft ? "opacity-100" : "opacity-0",
-				)}
-			/>
-			<div
-				className={cn(
-					"pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-linear-to-l from-background to-transparent transition-opacity duration-200",
-					canScrollRight ? "opacity-100" : "opacity-0",
-				)}
-			/>
 			<div
 				ref={containerRef}
 				className="flex gap-4 overflow-x-auto pb-4 lg:sticky lg:top-header lg:max-h-[calc(100dvh-var(--spacing-header))] lg:overflow-y-auto"
@@ -202,7 +212,7 @@ export function MonthGrid({
 								monthRefs.current[m] = el;
 							}}
 							tabIndex={-1}
-							className="rounded-lg"
+							className="rounded-lg outline-none"
 						>
 							{m === targetMonth ? (
 								table
