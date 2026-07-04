@@ -190,6 +190,24 @@ export function formatBRL(value: number): string {
 	return brlFormatter.format(value);
 }
 
+export function formatBRLAbbr(value: number): string {
+	const abs = Math.abs(value);
+	if (abs >= 1000) {
+		return `R$ ${(value / 1000).toFixed(1).replace(".", ",")}k`;
+	}
+	return formatBRL(value);
+}
+
+const brlRoundedFormatter = new Intl.NumberFormat("pt-BR", {
+	style: "currency",
+	currency: "BRL",
+	maximumFractionDigits: 0,
+});
+
+export function formatBRLRounded(value: number): string {
+	return brlRoundedFormatter.format(value);
+}
+
 export function formatWeekday(
 	year: number,
 	month: number,

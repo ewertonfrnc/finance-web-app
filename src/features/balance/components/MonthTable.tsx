@@ -10,6 +10,7 @@ import {
 import {
 	calcularTotaisMes,
 	formatBRL,
+	formatBRLAbbr,
 	getDiasNoMes,
 	getNomeMes,
 } from "#/lib/finance";
@@ -33,6 +34,7 @@ interface MonthTableProps {
 	categoryFilter: CategoryFilter;
 	density: BalanceDensity;
 	saldoMode: SaldoMode;
+	focoHeader?: boolean;
 	onSelectDay: (day: { year: number; month: number; day: number }) => void;
 }
 
@@ -51,6 +53,7 @@ export function MonthTable({
 	categoryFilter,
 	density,
 	saldoMode,
+	focoHeader,
 	onSelectDay,
 }: MonthTableProps) {
 	const monthData = financeYear.months[month];
@@ -127,15 +130,19 @@ export function MonthTable({
 				} as CSSProperties
 			}
 			className={cn(
-				"shrink-0 overflow-visible rounded-xl border border-border bg-card shadow-sm",
+				"overflow-visible rounded-xl border border-border bg-card shadow-sm",
+				!focoHeader && "shrink-0",
 				isCurrentMonth &&
 					"border-emerald-500/70 shadow-emerald-500/10 ring-1 ring-emerald-500/60",
-				categoryFilter === "todas" ? "min-w-90" : "min-w-64",
+				!focoHeader && (categoryFilter === "todas" ? "min-w-90" : "min-w-64"),
 			)}
 		>
 			<h2
 				className={cn(
-					"relative z-20 rounded-t-xl border-b border-border bg-muted/95 px-3 py-2.5 text-sm font-medium shadow-xs backdrop-blur supports-[backdrop-filter]:bg-muted/80 lg:sticky lg:top-0",
+					"relative z-20 rounded-t-xl border-b border-border bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 lg:sticky lg:top-0",
+					focoHeader
+						? "px-4 py-3"
+						: "px-3 py-2.5 text-sm font-medium shadow-xs",
 					isEmptyMonth && "cursor-pointer select-none",
 				)}
 				onClick={isEmptyMonth ? () => setCollapsed((c) => !c) : undefined}
@@ -159,15 +166,55 @@ export function MonthTable({
 						) : (
 							<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
 						))}
-					<span className="text-emerald-500">●</span>
-					<span className="mr-auto">
-						{monthName}/{String(year).slice(-2)}
-					</span>
-					<span className="hidden items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest sm:flex">
-						<span>Entrou {formatBRL(totals.entradas)}</span>
-						<span>Saiu {formatBRL(totals.saidas)}</span>
-						<span>Saldo fim {formatBRL(saldoFim)}</span>
-					</span>
+					{focoHeader ? (
+						<>
+							<span className="mr-auto flex items-baseline gap-2">
+								<span className="text-emerald-500">●</span>
+								<span className="font-bold text-lg">{monthName}</span>
+								<span className="font-normal text-muted-foreground text-base">
+									/ {String(year).slice(-2)}
+								</span>
+							</span>
+							<span className="flex items-start gap-6">
+								<span className="text-right">
+									<span className="block font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+										Entrou
+									</span>
+									<span className="font-mono font-bold text-sm tabular-nums text-emerald-600 dark:text-emerald-400">
+										{formatBRLAbbr(totals.entradas)}
+									</span>
+								</span>
+								<span className="text-right">
+									<span className="block font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+										Saiu
+									</span>
+									<span className="font-mono font-bold text-sm tabular-nums">
+										{formatBRLAbbr(totals.saidas)}
+									</span>
+								</span>
+								<span className="text-right">
+									<span className="block font-mono text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+										Saldo fim
+									</span>
+									<span className="font-mono font-bold text-sm tabular-nums">
+										{formatBRLAbbr(saldoFim)}
+									</span>
+								</span>
+							</span>
+						</>
+					) : (
+						<>
+							<span className="text-emerald-500">●</span>
+							<span className="mr-auto">
+								{monthName}/{String(year).slice(-2)}
+							</span>
+							<span className="hidden items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest sm:flex">
+								<span>Entrou {formatBRL(totals.entradas)}</span>
+								<span>Saiu {formatBRL(totals.saidas)}</span>
+								<span>Saldo fim {formatBRL(saldoFim)}</span>
+							</span>
+						</>
+					)}
 					{isEmptyMonth && (
 						<span className="text-xs font-normal text-muted-foreground">
 							Sem lançamentos

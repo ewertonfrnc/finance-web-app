@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { BalanceToolbar } from "#/features/balance/components/BalanceToolbar";
 import { BalanceTopBar } from "#/features/balance/components/BalanceTopBar";
+import { FocoLayout } from "#/features/balance/components/FocoLayout";
 import { MonthGrid } from "#/features/balance/components/MonthGrid";
 import { useBalancePreferences } from "#/features/balance/hooks/useBalancePreferences";
 import { useFinanceYear } from "#/features/balance/hooks/useFinanceYear";
@@ -46,12 +47,20 @@ function YearPage() {
 				onFilterChange={setCategoryFilter}
 			/>
 			<div className="mx-auto max-w-full px-4 py-4">
-				<MonthGrid
-					year={year}
-					categoryFilter={categoryFilter}
-					density={preferences.density}
-					saldoMode={preferences.saldoMode}
-				/>
+				{preferences.layout === "foco" ? (
+					<FocoLayout
+						year={year}
+						categoryFilter={categoryFilter}
+						saldoMode={preferences.saldoMode}
+					/>
+				) : (
+					<MonthGrid
+						year={year}
+						categoryFilter={categoryFilter}
+						density={preferences.density}
+						saldoMode={preferences.saldoMode}
+					/>
+				)}
 			</div>
 		</main>
 	);

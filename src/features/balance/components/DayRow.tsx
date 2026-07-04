@@ -56,6 +56,11 @@ const DayRow = React.memo(function DayRow({
 }: DayRowProps) {
 	const dayIsToday = isToday(year, month, day);
 	const dayIsFuture = isFutureDate(year, month, day);
+	const hasValues =
+		entry.entradas > 0 ||
+		entry.saidas > 0 ||
+		entry.diario > 0 ||
+		entry.economias > 0;
 	const dayOfWeek = new Date(year, month - 1, day).getDay();
 	const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 	const saldoColor = saldoColour(saldo, {
@@ -77,7 +82,8 @@ const DayRow = React.memo(function DayRow({
 
 	const rowClass = cn(
 		"group relative transition-colors",
-		dayIsToday && "bg-emerald-500/8 font-semibold",
+		dayIsToday && "bg-emerald-500/8",
+		hasValues && "font-semibold",
 		dayIsFuture && "text-muted-foreground",
 	);
 	const dayCellClass = cn(
